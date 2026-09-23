@@ -1,0 +1,38 @@
+fr3_bilateral_teleop
+
+This package is a modified version of franka_ros2_teleop
+  https://github.com/frankarobotics/franka_ros2_teleop
+  commit 69ade0e3e3a344c277f0c159a37ff8bd95c30636
+The original NOTICE follows unchanged.
+
+Changes from the original:
+  * Renamed the package, C++ namespace, include directory, plugin library and
+    plugin class names from franka_ros2_teleop to fr3_bilateral_teleop, so both
+    can be installed side by side.
+  * Upgraded the leader/follower controllers to a 4-channel bilateral scheme with
+    timing diagnostics, workspace constraints and payload handling (modified
+    src/, include/, config/, launch/ files).
+  * Added the PayloadModelBroadcaster controller, the stiffness-rate-limiter,
+    energy-tank and Cartesian-impedance-math headers with their tests, the
+    calibration/validation launch files and configs, the scripts/ pipeline, and
+    the offline labeling/evaluation tools in dataset_tools/.
+  * Removed the Docker, dev-container and CI files, which pointed at the
+    original package's images.
+
+-------------------------------------------------------------------------------
+
+franka_ros2_teleop
+
+Copyright 2025 Franka Robotics GmbH
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

@@ -1,0 +1,55 @@
+axis,n_contact_timesteps,n_identifiable,coverage_within_contact,task
+fx,9974,9471,0.9495688790856226,__all__
+fy,9974,8586,0.8608381792660919,__all__
+fz,9974,8622,0.8644475636655303,__all__
+tx,9974,8036,0.805694806496892,__all__
+ty,9974,6401,0.6417685983557249,__all__
+tz,9974,8831,0.8854020453178264,__all__
+fx,936,842,0.8995726495726496,wipe the black mark firmly
+fy,936,798,0.8525641025641025,wipe the black mark firmly
+fz,936,805,0.8600427350427351,wipe the black mark firmly
+tx,936,801,0.8557692307692307,wipe the black mark firmly
+ty,936,564,0.6025641025641025,wipe the black mark firmly
+tz,936,921,0.9839743589743589,wipe the black mark firmly
+fx,1483,1472,0.9925826028320971,wipe the black mark normally
+fy,1483,1254,0.8455832771409305,wipe the black mark normally
+fz,1483,1249,0.842211732973702,wipe the black mark normally
+tx,1483,1193,0.8044504383007417,wipe the black mark normally
+ty,1483,1045,0.7046527309507754,wipe the black mark normally
+tz,1483,1230,0.8293998651382333,wipe the black mark normally
+fx,969,932,0.9618163054695562,wipe the blue mark firmly
+fy,969,862,0.8895768833849329,wipe the blue mark firmly
+fz,969,895,0.9236326109391125,wipe the blue mark firmly
+tx,969,849,0.8761609907120743,wipe the blue mark firmly
+ty,969,708,0.7306501547987616,wipe the blue mark firmly
+tz,969,903,0.9318885448916409,wipe the blue mark firmly
+fx,1489,1467,0.9852249832102082,wipe the blue mark normally
+fy,1489,1285,0.8629952988582942,wipe the blue mark normally
+fz,1489,1220,0.8193418401611821,wipe the blue mark normally
+tx,1489,1188,0.7978509066487576,wipe the blue mark normally
+ty,1489,823,0.5527199462726662,wipe the blue mark normally
+tz,1489,1331,0.8938885157824042,wipe the blue mark normally
+fx,1004,862,0.8585657370517928,wipe the green mark firmly
+fy,1004,845,0.8416334661354582,wipe the green mark firmly
+fz,1004,855,0.851593625498008,wipe the green mark firmly
+tx,1004,832,0.8286852589641435,wipe the green mark firmly
+ty,1004,568,0.5657370517928287,wipe the green mark firmly
+tz,1004,963,0.9591633466135459,wipe the green mark firmly
+fx,1584,1554,0.9810606060606061,wipe the green mark normally
+fy,1584,1387,0.8756313131313131,wipe the green mark normally
+fz,1584,1392,0.8787878787878788,wipe the green mark normally
+tx,1584,1145,0.7228535353535354,wipe the green mark normally
+ty,1584,1125,0.7102272727272727,wipe the green mark normally
+tz,1584,1322,0.8345959595959596,wipe the green mark normally
+fx,989,861,0.8705763397371082,wipe the red mark firmly
+fy,989,846,0.8554095045500506,wipe the red mark firmly
+fz,989,885,0.8948432760364005,wipe the red mark firmly
+tx,989,819,0.8281092012133469,wipe the red mark firmly
+ty,989,611,0.6177957532861477,wipe the red mark firmly
+tz,989,952,0.9625884732052579,wipe the red mark firmly
+fx,1520,1481,0.9743421052631579,wipe the red mark normally
+fy,1520,1309,0.8611842105263158,wipe the red mark normally
+fz,1520,1321,0.8690789473684211,wipe the red mark normally
+tx,1520,1209,0.7953947368421053,wipe the red mark normally
+ty,1520,957,0.6296052631578948,wipe the red mark normally
+tz,1520,1209,0.7953947368421053,wipe the red mark normally

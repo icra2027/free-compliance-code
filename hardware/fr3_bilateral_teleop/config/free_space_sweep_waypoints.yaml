@@ -1,0 +1,58 @@
+# Joint-space waypoints for collect_free_space_sweep.py (Day 3, residual bias model).
+#
+# Goal is different from payload_calibration_waypoints.yaml: that set only needs to vary the
+# flange's orientation relative to gravity (small excursions on the wrist joints). This set
+# needs to cover the actual intended *working volume* -- the T1 whiteboard region and the T2
+# connector panel region -- so f_bias(q, q̇) is fit on the configurations the arm will actually
+# occupy during data collection, not just near the fixed re-zero/base pose.
+#
+# Same lesson as payload_calibration_waypoints.yaml applies: every consecutive pair of
+# waypoints differs in exactly ONE joint, routed back through the base pose, so every transit
+# is single-joint and doesn't trip a joint_velocity_violation reflex. This makes the set longer
+# (21 waypoints instead of a denser multi-joint grid) but it's the pattern already proven safe
+# on this rig -- see fr3_bilateral_teleop/README.md "Real-hardware findings" (payload calibration
+# section) before changing this to a denser/multi-joint grid.
+#
+# Base pose matches move_to_start_example_controller's default start_joint_configuration, same
+# as payload_calibration_waypoints.yaml. Deltas below are on joints 1, 2, 3, 4, 6 -- the joints
+# that dominate flange *position* (Cartesian workspace coverage), as opposed to
+# payload_calibration_waypoints.yaml's joints 2/4/6/7 (chosen for flange *orientation*, i.e.
+# gravity-vector diversity). All deltas checked against FR3 soft joint limits with margin:
+#   q1 in [-2.8973, 2.8973], q2 in [-1.7628, 1.7628], q3 in [-2.8973, 2.8973],
+#   q4 in [-3.0718, -0.0698], q6 in [-0.0175, 3.7525]
+#
+# SAFETY: this sweeps a substantially larger volume than payload calibration. Jog through every
+# waypoint at low speed via Desk at least once before running collect_free_space_sweep.py
+# unattended, and confirm the T1/T2 fixtures (board, panel) are either not yet mounted or are
+# clear of this envelope -- this is a free-space characterization sweep and must never contact
+# anything. Re-verify clearance whenever the fixture layout changes (Day 6 freeze).
+waypoints:
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.6, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint1 +
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [-0.6, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]  # joint1 -
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.285398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 +
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -1.285398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 -
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.6, -2.356194, 0.0, 1.570796, 0.785398]   # joint3 +
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, -0.6, -2.356194, 0.0, 1.570796, 0.785398]  # joint3 -
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -1.856194, 0.0, 1.570796, 0.785398]   # joint4 + (toward less flexion)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.856194, 0.0, 1.570796, 0.785398]   # joint4 - (toward more flexion)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 2.070796, 0.785398]   # joint6 +
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.070796, 0.785398]   # joint6 -
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+
+# One full pass through the waypoints above is repeated once per speed_factor, so the same
+# configurations are visited at multiple transit velocities (varying q̇ at matched q) as well
+# as the static holds at the end of each transit (q̇ ≈ 0) -- both are needed since f_bias is
+# fit as a function of (q, q̇), not q alone. 0.2 is the value already used as the shared
+# teleop-startup default elsewhere in this package (known-good); 0.05/0.1 add slower passes for
+# low-velocity coverage without introducing any new untested speed.
+speed_factors: [0.05, 0.1, 0.2]

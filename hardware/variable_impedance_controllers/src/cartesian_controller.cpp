@@ -1,0 +1,1041 @@
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+
+#include <Eigen/src/Core/Matrix.h>  // NOLINT(build/include_order)
+#include <fmt/format.h>
+#include <controller_interface/controller_interface_base.hpp>
+#include <rclcpp/logging.hpp>
+
+#include <pinocchio/algorithm/aba.hpp>
+#include <pinocchio/algorithm/compute-all-terms.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/rnea.hpp>
+#include <pinocchio/multibody/fwd.hpp>
+#include <pinocchio/parsers/urdf.hpp>
+#include <pinocchio/spatial/explog.hpp>
+#include <pinocchio/spatial/fwd.hpp>
+
+#include "pinocchio/algorithm/model.hpp"
+
+#include <std_msgs/msg/float64_multi_array.hpp>
+
+#include <variable_impedance_controllers/cartesian_controller.hpp>
+#include <variable_impedance_controllers/pch.hpp>
+#include <variable_impedance_controllers/utils/friction_model.hpp>
+#include <variable_impedance_controllers/utils/joint_limits.hpp>
+#include <variable_impedance_controllers/utils/pseudo_inverse.hpp>
+#include "variable_impedance_controllers/utils/fiters.hpp"
+#include "variable_impedance_controllers/utils/torque_rate_saturation.hpp"
+
+#include "variable_impedance_controllers/utils/fiters.hpp"
+#include "variable_impedance_controllers/utils/ros2_version.hpp"
+#include "variable_impedance_controllers/utils/torque_rate_saturation.hpp"
+
+#if HAS_ROS2_CONTROL_INTROSPECTION
+#include <hardware_interface/introspection.hpp>
+#endif
+
+namespace variable_impedance_controllers {
+
+controller_interface::InterfaceConfiguration
+CartesianController::command_interface_configuration() const {
+  controller_interface::InterfaceConfiguration config;
+  config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
+  for (const auto & joint_name : params_.joints) {
+    config.names.push_back(joint_name + "/effort");
+  }
+  return config;
+}
+
+controller_interface::InterfaceConfiguration
+CartesianController::state_interface_configuration() const {
+  controller_interface::InterfaceConfiguration config;
+  config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
+
+  for (const auto & joint_name : params_.joints) {
+    config.names.push_back(joint_name + "/position");
+  }
+  for (const auto & joint_name : params_.joints) {
+    config.names.push_back(joint_name + "/velocity");
+  }
+  return config;
+}
+
+controller_interface::return_type
+CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & period) {
+  const double dt = period.seconds();
+
+  // Update current state information with EMA filtered values
+  updateCurrentState();
+
+  // Check if new targets available
+  if (new_target_pose_) {
+    parse_target_pose_();
+    new_target_pose_ = false;
+  }
+  if (new_target_joint_) {
+    parse_target_joint_();
+    new_target_joint_ = false;
+  }
+  if (new_target_wrench_) {
+    parse_target_wrench_();
+    new_target_wrench_ = false;
+  }
+  if (new_target_stiffness_) {
+    parse_target_stiffness_();
+    new_target_stiffness_ = false;
+    setStiffnessAndDamping();
+  }
+
+  pinocchio::forwardKinematics(model_, data_, q_pin, dq);
+  pinocchio::updateFramePlacements(model_, data_);
+
+  desired_position_ =
+    exponential_moving_average(desired_position_, target_position_, params_.filter.target_pose);
+  desired_orientation_ =
+    target_orientation_.slerp(params_.filter.target_pose, desired_orientation_);
+
+  /*target_pose_ = pinocchio::SE3(target_orientation_.toRotationMatrix(),
+   * target_position_);*/
+  end_effector_pose = data_.oMf[end_effector_frame_id];
+
+  if (!end_effector_pose.translation().allFinite() ||
+      !end_effector_pose.rotation().allFinite()) {
+    RCLCPP_ERROR_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "end_effector_pose contains NaN/Inf. "
+      "Holding previous torque command this cycle.");
+    if (!params_.stop_commands) {
+      for (size_t i = 0; i < params_.joints.size(); ++i) {
+#if ROS2_VERSION_ABOVE_HUMBLE
+        (void)command_interfaces_[i].set_value(tau_previous[i]);
+#else
+        command_interfaces_[i].set_value(tau_previous[i]);
+#endif
+      }
+    }
+    return controller_interface::return_type::OK;
+  }
+
+  // We consider translation and rotation separately to avoid unatural screw
+  // motions
+  if (params_.use_local_jacobian) {
+    error.head(3) = end_effector_pose.rotation().transpose() *
+      (desired_position_ - end_effector_pose.translation());
+    error.tail(3) =
+      pinocchio::log3(end_effector_pose.rotation().transpose() * desired_orientation_);
+  } else {
+    error.head(3) = desired_position_ - end_effector_pose.translation();
+    error.tail(3) =
+      pinocchio::log3(desired_orientation_ * end_effector_pose.rotation().transpose());
+  }
+
+  if (params_.limit_error) {
+    max_delta_ << params_.task.error_clip.x, params_.task.error_clip.y, params_.task.error_clip.z,
+      params_.task.error_clip.rx, params_.task.error_clip.ry, params_.task.error_clip.rz;
+    error = error.cwiseMax(-max_delta_).cwiseMin(max_delta_);
+  }
+
+  J.setZero();
+  auto reference_frame = params_.use_local_jacobian
+    ? pinocchio::ReferenceFrame::LOCAL
+    : pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED;
+  pinocchio::computeFrameJacobian(model_, data_, q_pin, end_effector_frame_id, reference_frame, J);
+
+  J_pinv = pseudo_inverse(J, params_.nullspace.regularization);
+  if (params_.nullspace.projector_type == "dynamic" || params_.use_operational_space) {
+    pinocchio::computeMinverse(model_, data_, q_pin);
+    data_.Minv.triangularView<Eigen::StrictlyLower>() =
+      data_.Minv.transpose().triangularView<Eigen::StrictlyLower>();
+    Mx_inv = J * data_.Minv * J.transpose();
+    Mx = pseudo_inverse(Mx_inv, params_.operational_space_regularization);
+  }
+
+  if (params_.nullspace.projector_type == "dynamic") {
+    auto J_bar = data_.Minv * J.transpose() * Mx;
+    nullspace_projection = Id_nv - J.transpose() * J_bar.transpose();
+  } else if (params_.nullspace.projector_type == "kinematic") {
+    nullspace_projection = Id_nv - J_pinv * J;
+  } else if (params_.nullspace.projector_type == "none") {
+    nullspace_projection = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
+  } else {
+    RCLCPP_ERROR_STREAM_ONCE(
+      get_node()->get_logger(),
+      "Unknown nullspace projector type: " << params_.nullspace.projector_type);
+    return controller_interface::return_type::ERROR;
+  }
+
+  // proposal §4.3: shape this cycle's target stiffness (log-space rate limit + energy tank)
+  // into stiffness/damping before they're used below. Needs `error` (already finalized
+  // above) and `J` (just computed above) for the tank's withdrawal-amount and dissipated-
+  // power bookkeeping.
+  const Eigen::VectorXd xdot_task = J * dq;
+  applyStiffnessShaping(dt, xdot_task);
+
+  if (params_.use_operational_space) {
+    tau_task << J.transpose() * Mx * (stiffness * error - damping * xdot_task);
+  } else {
+    tau_task << J.transpose() * (stiffness * error - damping * xdot_task);
+  }
+
+  if (model_.nq != model_.nv) {
+    // TODO(placeholder): Then we have some continouts joints, not being handled for now
+    tau_joint_limits = Eigen::VectorXd::Zero(model_.nv);
+  } else {
+    tau_joint_limits = get_joint_limit_torque(
+      q,
+      model_.lowerPositionLimit,
+      model_.upperPositionLimit,
+      params_.joint_limit_repulsion.safe_range,
+      params_.joint_limit_repulsion.max_torque);
+  }
+
+  tau_secondary << nullspace_stiffness * (q_ref - q) + nullspace_damping * (dq_ref - dq);
+
+  tau_nullspace << nullspace_projection * tau_secondary;
+  tau_nullspace =
+    tau_nullspace.cwiseMin(params_.nullspace.max_tau).cwiseMax(-params_.nullspace.max_tau);
+
+  tau_friction =
+    params_.use_friction ? get_friction(dq, fp1, fp2, fp3) : Eigen::VectorXd::Zero(model_.nv);
+
+  if (params_.use_coriolis_compensation) {
+    pinocchio::computeAllTerms(model_, data_, q_pin, dq);
+    tau_coriolis = pinocchio::computeCoriolisMatrix(model_, data_, q_pin, dq) * dq;
+  } else {
+    tau_coriolis = Eigen::VectorXd::Zero(model_.nv);
+  }
+
+  tau_gravity = params_.use_gravity_compensation
+    ? pinocchio::computeGeneralizedGravity(model_, data_, q_pin)
+    : Eigen::VectorXd::Zero(model_.nv);
+
+  tau_wrench << J.transpose() * target_wrench_;
+
+  tau_d << tau_task + tau_nullspace + tau_friction + tau_coriolis + tau_gravity + tau_joint_limits +
+      tau_wrench;
+
+  if (params_.limit_torques) {
+    tau_d = saturateTorqueRate(tau_d, tau_previous, params_.max_delta_tau);
+  }
+  tau_d = exponential_moving_average(tau_d, tau_previous, params_.filter.output_torque);
+
+  if (!params_.stop_commands) {
+    for (size_t i = 0; i < params_.joints.size(); ++i) {
+#if ROS2_VERSION_ABOVE_HUMBLE
+      (void)command_interfaces_[i].set_value(tau_d[i]);
+#else
+      command_interfaces_[i].set_value(tau_d[i]);
+#endif
+    }
+  }
+
+  tau_previous = tau_d;
+
+  params_listener_->refresh_dynamic_parameters();
+  if (params_listener_->is_old(params_)) {
+    params_ = params_listener_->get_params();
+    setStiffnessAndDamping();
+  }
+
+  log_debug_info(time);
+
+  return controller_interface::return_type::OK;
+}
+
+CallbackReturn CartesianController::on_init() {
+  params_listener_ = std::make_shared<cartesian_controller::ParamListener>(get_node());
+  params_listener_->refresh_dynamic_parameters();
+  params_ = params_listener_->get_params();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn
+CartesianController::on_configure(const rclcpp_lifecycle::State & /*previous_state*/) {
+  auto parameters_client =
+    std::make_shared<rclcpp::AsyncParametersClient>(get_node(), "robot_state_publisher");
+  parameters_client->wait_for_service();
+
+  auto future = parameters_client->get_parameters({"robot_description"});
+  auto result = future.get();
+
+  std::string robot_description_;
+  if (!result.empty()) {
+    robot_description_ = result[0].value_to_string();
+  } else {
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to get robot_description parameter.");
+    return CallbackReturn::ERROR;
+  }
+
+  pinocchio::Model raw_model_;
+  pinocchio::urdf::buildModelFromXML(robot_description_, raw_model_);
+
+  RCLCPP_INFO(get_node()->get_logger(), "Checking available joints in model:");
+  for (int joint_id = 0; joint_id < raw_model_.njoints; joint_id++) {
+    RCLCPP_INFO_STREAM(
+      get_node()->get_logger(),
+      "Joint " << joint_id << " with name " << raw_model_.names[joint_id] << " is of type "
+               << raw_model_.joints[joint_id].shortname());
+  }
+
+  // First we check that the passed joints exist in the kineatic tree
+  for (auto & joint : params_.joints) {
+    if (!raw_model_.existJointName(joint)) {
+      RCLCPP_ERROR_STREAM(
+        get_node()->get_logger(),
+        "Failed to configure because " << joint
+                                       << " is not part of the kinematic tree but it "
+                                          "has been passed in the parameters.");
+      return CallbackReturn::ERROR;
+    }
+  }
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "All joints passed in the parameters exist in the kinematic tree "
+    "of the URDF.");
+  RCLCPP_INFO_STREAM(
+    get_node()->get_logger(), "Removing the rest of the joints that are not used: ");
+  // Now we fix all joints that are not referenced in the tree
+  std::vector<pinocchio::JointIndex> list_of_joints_to_lock_by_id;
+  for (auto & joint : raw_model_.names) {
+    if (
+      std::find(params_.joints.begin(), params_.joints.end(), joint) == params_.joints.end() &&
+      joint != "universe") {
+      RCLCPP_INFO_STREAM(
+        get_node()->get_logger(), "Joint " << joint << " is not used, removing it from the model.");
+      list_of_joints_to_lock_by_id.push_back(raw_model_.getJointId(joint));
+    }
+  }
+
+  Eigen::VectorXd q_locked = Eigen::VectorXd::Zero(raw_model_.nq);
+  model_ = pinocchio::buildReducedModel(raw_model_, list_of_joints_to_lock_by_id, q_locked);
+  data_ = pinocchio::Data(model_);
+
+  for (int joint_id = 0; joint_id < model_.njoints; joint_id++) {
+    if (model_.names[joint_id] == "universe") {
+      continue;
+    }
+    if (!allowed_joint_types.count(model_.joints[joint_id].shortname())) {
+      RCLCPP_ERROR_STREAM(
+        get_node()->get_logger(),
+        "Joint type " << model_.joints[joint_id].shortname() << " is unsupported ("
+                      << model_.names[joint_id]
+                      << "), only revolute/continous like joints can be used.");
+      return CallbackReturn::ERROR;
+    }
+  }
+  
+  // Preallocate the matrices and vectors that will be used in the control loop
+  if (!model_.existFrame(params_.end_effector_frame)) {
+    RCLCPP_ERROR_STREAM(
+      get_node()->get_logger(),
+      "end_effector_frame '" << params_.end_effector_frame
+        << "' is not present in the robot model. Refusing to configure: "
+           "activating with an invalid frame results in undefined behavior "
+           "(out-of-bounds access into pinocchio::Data, manifesting as a "
+           "segfault or NaN/Inf in computed torques).");
+    return CallbackReturn::ERROR;
+  }
+  end_effector_frame_id = model_.getFrameId(params_.end_effector_frame);
+  q = Eigen::VectorXd::Zero(model_.nv);
+  q_pin = Eigen::VectorXd::Zero(model_.nq);
+  dq = Eigen::VectorXd::Zero(model_.nv);
+  q_ref = Eigen::VectorXd::Zero(model_.nv);
+  q_target = Eigen::VectorXd::Zero(model_.nv);
+  dq_ref = Eigen::VectorXd::Zero(model_.nv);
+  tau_previous = Eigen::VectorXd::Zero(model_.nv);
+  J = Eigen::MatrixXd::Zero(6, model_.nv);
+  J_pinv = Eigen::MatrixXd::Zero(model_.nv, 6);
+  Id_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
+
+  // Map the friction parameters to Eigen vectors
+  fp1 = Eigen::Map<Eigen::VectorXd>(params_.friction.fp1.data(), model_.nv);
+  fp2 = Eigen::Map<Eigen::VectorXd>(params_.friction.fp2.data(), model_.nv);
+  fp3 = Eigen::Map<Eigen::VectorXd>(params_.friction.fp3.data(), model_.nv);
+
+  nullspace_stiffness = Eigen::MatrixXd::Zero(model_.nv, model_.nv);
+  nullspace_damping = Eigen::MatrixXd::Zero(model_.nv, model_.nv);
+
+  setStiffnessAndDamping();
+
+  {
+    Eigen::Matrix<double, 6, 1> gamma;
+    for (int i = 0; i < 6; ++i) {
+      gamma(i) = params_.stiffness_shaping.gamma.at(i);
+    }
+    Eigen::Matrix<double, 6, 1> k_min;
+    k_min << params_.stiffness_shaping.min_stiffness_translational,
+      params_.stiffness_shaping.min_stiffness_translational,
+      params_.stiffness_shaping.min_stiffness_translational,
+      params_.stiffness_shaping.min_stiffness_rotational,
+      params_.stiffness_shaping.min_stiffness_rotational,
+      params_.stiffness_shaping.min_stiffness_rotational;
+    Eigen::Matrix<double, 6, 1> k_max;
+    k_max << params_.variable_max_stiffness.translational,
+      params_.variable_max_stiffness.translational,
+      params_.variable_max_stiffness.translational,
+      params_.variable_max_stiffness.rotational,
+      params_.variable_max_stiffness.rotational,
+      params_.variable_max_stiffness.rotational;
+    stiffness_rate_limiter_ = std::make_unique<LogSpaceStiffnessRateLimiter>(gamma, k_min, k_max);
+    energy_tank_ = std::make_unique<EnergyTank>(
+      params_.stiffness_shaping.energy_tank.e0, params_.stiffness_shaping.energy_tank.e_min,
+      params_.stiffness_shaping.energy_tank.e_max);
+  }
+  stiffness_rate_limiter_->reset(stiffness_target_diagonal_);
+  stiffness_applied_diagonal_ = stiffness_target_diagonal_;
+  stiffness.setZero();
+  stiffness.diagonal() = stiffness_applied_diagonal_;
+  damping.setZero();
+  damping.diagonal() = 2.0 * stiffness_applied_diagonal_.cwiseSqrt();
+
+  new_target_pose_ = false;
+  new_target_joint_ = false;
+  new_target_wrench_ = false;
+  new_target_stiffness_ = false;
+  use_topic_stiffness_ = false;
+
+  multiple_publishers_detected_ = false;
+  max_allowed_publishers_ = 1;
+
+  const auto target_pose_topic =
+    params_.topics.target_pose.empty() ? "target_pose" : params_.topics.target_pose;
+  const auto target_joint_topic =
+    params_.topics.target_joint.empty() ? "target_joint" : params_.topics.target_joint;
+  const auto target_wrench_topic =
+    params_.topics.target_wrench.empty() ? "target_wrench" : params_.topics.target_wrench;
+
+  auto target_pose_callback =
+    [this, target_pose_topic](const std::shared_ptr<geometry_msgs::msg::PoseStamped> msg) -> void {
+    if (!check_topic_publisher_count(target_pose_topic)) {
+      RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(),
+        *get_node()->get_clock(),
+        1000,
+        "Ignoring message on '%s' due to multiple publishers detected!",
+        target_pose_topic.c_str());
+      return;
+    }
+    target_pose_buffer_.writeFromNonRT(msg);
+    new_target_pose_ = true;
+  };
+
+  auto target_joint_callback =
+    [this, target_joint_topic](const std::shared_ptr<sensor_msgs::msg::JointState> msg) -> void {
+    if (!check_topic_publisher_count(target_joint_topic)) {
+      RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(),
+        *get_node()->get_clock(),
+        1000,
+        "Ignoring message on '%s' due to multiple publishers detected!",
+        target_joint_topic.c_str());
+      return;
+    }
+    target_joint_buffer_.writeFromNonRT(msg);
+    new_target_joint_ = true;
+  };
+
+  auto target_wrench_callback =
+    [this, target_wrench_topic](
+      const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg) -> void {
+    if (!check_topic_publisher_count(target_wrench_topic)) {
+      RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(),
+        *get_node()->get_clock(),
+        1000,
+        "Ignoring message on '%s' due to multiple publishers detected!",
+        target_wrench_topic.c_str());
+      return;
+    }
+    target_wrench_buffer_.writeFromNonRT(msg);
+    new_target_wrench_ = true;
+  };
+
+  pose_sub_ = get_node()->create_subscription<geometry_msgs::msg::PoseStamped>(
+    target_pose_topic, rclcpp::QoS(1), target_pose_callback);
+
+  joint_sub_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+    target_joint_topic, rclcpp::QoS(1), target_joint_callback);
+
+  wrench_sub_ = get_node()->create_subscription<geometry_msgs::msg::WrenchStamped>(
+    target_wrench_topic, rclcpp::QoS(1), target_wrench_callback);
+
+  auto target_stiffness_callback =
+    [this](const std::shared_ptr<std_msgs::msg::Float64MultiArray> msg) -> void {
+    if (!check_topic_publisher_count(params_.variable_stiffness.topic)) {
+      RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(),
+        *get_node()->get_clock(),
+        1000,
+        "Ignoring target_stiffness message due to multiple publishers detected!");
+      return;
+    }
+    target_stiffness_buffer_.writeFromNonRT(msg);
+    new_target_stiffness_ = true;
+  };
+
+  stiffness_sub_ = get_node()->create_subscription<std_msgs::msg::Float64MultiArray>(
+    params_.variable_stiffness.topic, rclcpp::QoS(1), target_stiffness_callback);
+
+  RCLCPP_INFO(get_node()->get_logger(), "Variable stiffness topic: %s",
+    params_.variable_stiffness.topic.c_str());
+
+  stiffness_target_publisher_ = std::make_shared<Float64MultiArrayRtPublisher>(
+    get_node()->create_publisher<std_msgs::msg::Float64MultiArray>(
+      "~/diagnostics/stiffness_target", rclcpp::SystemDefaultsQoS()));
+  stiffness_applied_publisher_ = std::make_shared<Float64MultiArrayRtPublisher>(
+    get_node()->create_publisher<std_msgs::msg::Float64MultiArray>(
+      "~/diagnostics/stiffness_applied", rclcpp::SystemDefaultsQoS()));
+  energy_tank_energy_publisher_ = std::make_shared<Float64RtPublisher>(
+    get_node()->create_publisher<std_msgs::msg::Float64>(
+      "~/diagnostics/energy_tank_energy", rclcpp::SystemDefaultsQoS()));
+  stiffness_target_publisher_->msg_.data.resize(6);
+  stiffness_applied_publisher_->msg_.data.resize(6);
+
+  // Initialize all control vectors with appropriate dimensions
+  tau_task = Eigen::VectorXd::Zero(model_.nv);
+  tau_joint_limits = Eigen::VectorXd::Zero(model_.nv);
+  tau_secondary = Eigen::VectorXd::Zero(model_.nv);
+  tau_nullspace = Eigen::VectorXd::Zero(model_.nv);
+  tau_friction = Eigen::VectorXd::Zero(model_.nv);
+  tau_coriolis = Eigen::VectorXd::Zero(model_.nv);
+  tau_gravity = Eigen::VectorXd::Zero(model_.nv);
+  tau_wrench = Eigen::VectorXd::Zero(model_.nv);
+  tau_d = Eigen::VectorXd::Zero(model_.nv);
+
+  // Initialize target state vectors
+  target_position_ = Eigen::Vector3d::Zero();
+  target_orientation_ = Eigen::Quaterniond::Identity();
+  target_wrench_ = Eigen::VectorXd::Zero(6);
+  desired_position_ = Eigen::Vector3d::Zero();
+  desired_orientation_ = Eigen::Quaterniond::Identity();
+
+  // Initialize error vector
+  error = Eigen::VectorXd::Zero(6);
+  max_delta_ = Eigen::VectorXd::Zero(6);
+
+  // Initialize nullspace projection matrix
+  nullspace_projection = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
+
+#if HAS_ROS2_CONTROL_INTROSPECTION
+  if (params_.enable_introspection) {
+    RCLCPP_INFO(get_node()->get_logger(), "Enabling ROS2 Control Introspection for debugging.");
+    this->enable_introspection(true);
+    for (int i = 0; i < tau_task.size(); ++i) {
+      REGISTER_ROS2_CONTROL_INTROSPECTION("tau_task_" + std::to_string(i), &tau_task[i]);
+      REGISTER_ROS2_CONTROL_INTROSPECTION("tau_desired_" + std::to_string(i), &tau_d[i]);
+    }
+    for (int i = 0; i < error.size(); ++i) {
+      REGISTER_ROS2_CONTROL_INTROSPECTION("error_" + std::to_string(i), &error[i]);
+    }
+    REGISTER_ROS2_CONTROL_INTROSPECTION("target_position_x", &target_position_[0]);
+    REGISTER_ROS2_CONTROL_INTROSPECTION("target_position_y", &target_position_[1]);
+    REGISTER_ROS2_CONTROL_INTROSPECTION("target_position_z", &target_position_[2]);
+    for (int i = 0; i < target_orientation_.coeffs().size(); ++i) {
+      REGISTER_ROS2_CONTROL_INTROSPECTION(
+        "target_orientation_" + std::to_string(i), &target_orientation_.coeffs()[i]);
+    }
+    for (int i = 0; i < q_target.size(); ++i) {
+      REGISTER_ROS2_CONTROL_INTROSPECTION("q_target_" + std::to_string(i), &q_target[i]);
+      REGISTER_ROS2_CONTROL_INTROSPECTION("q_ref_" + std::to_string(i), &q_ref[i]);
+    }
+    // Proposal §4.3 commanded-vs-realized-stiffness validation figure: stiffness_target_*
+    // is the "commanded" side, stiffness_applied_* is the "realized" side (post rate-limit
+    // + energy tank).
+    for (int i = 0; i < stiffness_target_diagonal_.size(); ++i) {
+      REGISTER_ROS2_CONTROL_INTROSPECTION(
+        "stiffness_target_" + std::to_string(i), &stiffness_target_diagonal_[i]);
+      REGISTER_ROS2_CONTROL_INTROSPECTION(
+        "stiffness_applied_" + std::to_string(i), &stiffness_applied_diagonal_[i]);
+    }
+    REGISTER_ROS2_CONTROL_INTROSPECTION("energy_tank_energy", &energy_tank_energy_);
+  } else {
+    RCLCPP_INFO(get_node()->get_logger(), "ROS2 Control Introspection is disabled.");
+  }
+#endif
+
+  RCLCPP_INFO(get_node()->get_logger(), "State interfaces and control vectors initialized.");
+
+  return CallbackReturn::SUCCESS;
+}
+
+void CartesianController::setStiffnessAndDamping() {
+  // Computes this cycle's stiffness TARGET only. The proposal §4.3 log-space rate limiter
+  // and energy tank (applyStiffnessShaping(), called every update()) turn this into the
+  // actually-applied stiffness_applied_diagonal_, which is what `stiffness`/`damping` get
+  // set to -- NOT this function anymore. This function still owns the [0, max] clamp (a
+  // property of the target, independent of shaping) and the per-axis damping-override
+  // parsing.
+  if (use_topic_stiffness_) {
+    stiffness_target_diagonal_ = topic_stiffness_.diagonal();
+  } else {
+    stiffness_target_diagonal_ << params_.task.k_pos_x, params_.task.k_pos_y, params_.task.k_pos_z,
+      params_.task.k_rot_x, params_.task.k_rot_y, params_.task.k_rot_z;
+  }
+
+  // Clamp stiffness to [0, max_stiffness]
+  const double max_k_trans = params_.variable_max_stiffness.translational;
+  const double max_k_rot = params_.variable_max_stiffness.rotational;
+  for (int i = 0; i < 3; ++i) {
+    if (stiffness_target_diagonal_(i) < 0.0 || stiffness_target_diagonal_(i) > max_k_trans) {
+      RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 100,
+        "Translational stiffness[%d]=%.1f out of [0, %.1f], clamping.",
+        i, stiffness_target_diagonal_(i), max_k_trans);
+      stiffness_target_diagonal_(i) = std::clamp(stiffness_target_diagonal_(i), 0.0, max_k_trans);
+    }
+  }
+  for (int i = 3; i < 6; ++i) {
+    if (stiffness_target_diagonal_(i) < 0.0 || stiffness_target_diagonal_(i) > max_k_rot) {
+      RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 100,
+        "Rotational stiffness[%d]=%.1f out of [0, %.1f], clamping.",
+        i, stiffness_target_diagonal_(i), max_k_rot);
+      stiffness_target_diagonal_(i) = std::clamp(stiffness_target_diagonal_(i), 0.0, max_k_rot);
+    }
+  }
+
+  // Per-axis explicit damping override (> 0) or -1 sentinel meaning "derive critically from
+  // the APPLIED, post-shaping stiffness" -- resolved every cycle in applyStiffnessShaping(),
+  // since stiffness_applied_diagonal_ isn't known until then.
+  damping_override_diagonal_ << params_.task.d_pos_x, params_.task.d_pos_y, params_.task.d_pos_z,
+    params_.task.d_rot_x, params_.task.d_rot_y, params_.task.d_rot_z;
+
+  nullspace_stiffness.setZero();
+  nullspace_damping.setZero();
+
+  auto weights = Eigen::VectorXd(model_.nv);
+  for (size_t i = 0; i < params_.joints.size(); ++i) {
+    weights[i] = params_.nullspace.weights.joints_map.at(params_.joints.at(i)).value;
+  }
+  nullspace_stiffness.diagonal() << params_.nullspace.stiffness * weights;
+
+  // For nullspace, use explicit damping if > 0, otherwise compute from stiffness
+  if (params_.nullspace.damping > 0) {
+    nullspace_damping.diagonal() = params_.nullspace.damping * weights;
+  } else {
+    nullspace_damping.diagonal() = 2.0 * nullspace_stiffness.diagonal().cwiseSqrt();
+  }
+}
+
+void CartesianController::applyStiffnessShaping(double dt, const Eigen::VectorXd & xdot_task) {
+  Eigen::Matrix<double, 6, 1> k_shaped;
+
+  if (params_.stiffness_shaping.enabled) {
+    const Eigen::Matrix<double, 6, 1> k_rate_limited =
+      stiffness_rate_limiter_->step(stiffness_target_diagonal_, dt);
+
+    // Energy-tank veto, per axis: a rate-legal increase can still be refused if the tank
+    // cannot afford the potential energy it would add at the current pose error. Decreases
+    // always pass through.
+    k_shaped = stiffness_applied_diagonal_;
+    bool any_vetoed = false;
+    for (int i = 0; i < 6; ++i) {
+      if (k_rate_limited(i) > stiffness_applied_diagonal_(i)) {
+        const double delta_energy = 0.5 * (k_rate_limited(i) - stiffness_applied_diagonal_(i)) *
+          error(i) * error(i);
+        if (energy_tank_->try_withdraw(delta_energy)) {
+          k_shaped(i) = k_rate_limited(i);
+        } else {
+          any_vetoed = true;  // hold at stiffness_applied_diagonal_(i) this cycle
+        }
+      } else {
+        k_shaped(i) = k_rate_limited(i);
+      }
+    }
+    if (any_vetoed) {
+      // Re-sync stiffness_rate_limiter_'s internal state to what's ACTUALLY applied
+      // (k_shaped), not what it would have tracked without the veto.
+      //
+      // Found empirically, not assumed: an earlier version left the limiter fully
+      // decoupled from the veto ("it always sees its own true, uninterrupted trajectory").
+      // Under a sinusoidal stiffness probe with one axis given a sustained, genuinely
+      // nonzero pose error (see tasks.md Day 5 / scripts/probe_variable_impedance_sinusoid.py),
+      // that axis's tank hit its floor early and then never recovered even a single decrease
+      // for the rest of a 15s run -- confirmed (via a debug run with an effectively
+      // unlimited tank) that the axis tracks the sinusoid fine on its own; the flatline was
+      // entirely a consequence of the decoupled limiter continuing to chase the raw target
+      // upward while vetoed, ratcheting toward k_max, and then not having time to swing back
+      // below the frozen applied value within one oscillation period, re-triggering the
+      // veto before a real decrease could ever land.
+      //
+      // Re-syncing does not introduce any new discontinuity in the actual OUTPUT (k_shaped
+      // is already what's being applied this cycle); it only corrects the limiter's
+      // reference point so that the very next cycle where target dips below what's actually
+      // applied is immediately treated as the legal, tank-free decrease it is -- matching
+      // the "decreases are always safe" passivity argument the tank itself is built on,
+      // rather than first requiring an un-applied phantom trajectory to catch down to it.
+      stiffness_rate_limiter_->reset(k_shaped);
+    }
+  } else {
+    k_shaped = stiffness_target_diagonal_;
+  }
+  stiffness_applied_diagonal_ = k_shaped;
+
+  stiffness.setZero();
+  stiffness.diagonal() = stiffness_applied_diagonal_;
+
+  damping.setZero();
+  for (int i = 0; i < 6; ++i) {
+    damping(i, i) = damping_override_diagonal_(i) > 0.0
+      ? damping_override_diagonal_(i)
+      : 2.0 * std::sqrt(stiffness_applied_diagonal_(i));
+  }
+
+  if (params_.stiffness_shaping.enabled) {
+    // Bank the power this cycle's damping is dissipating, available for next cycle's
+    // withdrawals -- see the header comment on the ordering rationale (this cycle's
+    // withdraw, above, drew against energy banked through the END of the previous cycle).
+    const double dissipated_power =
+      (damping.diagonal().array() * xdot_task.array().square()).sum();
+    energy_tank_->accumulate_dissipated_power(dissipated_power, dt);
+  }
+  energy_tank_energy_ = energy_tank_ ? energy_tank_->energy() : 0.0;
+
+  if (stiffness_target_publisher_ && stiffness_target_publisher_->trylock()) {
+    for (int i = 0; i < 6; ++i) {
+      stiffness_target_publisher_->msg_.data[static_cast<std::size_t>(i)] =
+        stiffness_target_diagonal_(i);
+    }
+    stiffness_target_publisher_->unlockAndPublish();
+  }
+  if (stiffness_applied_publisher_ && stiffness_applied_publisher_->trylock()) {
+    for (int i = 0; i < 6; ++i) {
+      stiffness_applied_publisher_->msg_.data[static_cast<std::size_t>(i)] =
+        stiffness_applied_diagonal_(i);
+    }
+    stiffness_applied_publisher_->unlockAndPublish();
+  }
+  if (energy_tank_energy_publisher_ && energy_tank_energy_publisher_->trylock()) {
+    energy_tank_energy_publisher_->msg_.data = energy_tank_energy_;
+    energy_tank_energy_publisher_->unlockAndPublish();
+  }
+}
+
+void CartesianController::updateCurrentState(bool initialize) {
+  auto num_joints = params_.joints.size();
+  for (size_t i = 0; i < num_joints; i++) {
+    auto joint_name = params_.joints[i];
+    auto joint_id = model_.getJointId(joint_name);  // pinocchio joind id might be different
+    auto joint = model_.joints[joint_id];
+
+#if ROS2_VERSION_ABOVE_HUMBLE
+    double q_meas = state_interfaces_[i].get_optional().value_or(q[i]);
+    double dq_meas = state_interfaces_[num_joints + i].get_optional().value_or(dq[i]);
+#else
+    double q_meas = state_interfaces_[i].get_value();
+    double dq_meas = state_interfaces_[num_joints + i].get_value();
+#endif
+    
+    q_ref[i] = initialize 
+      ? q_meas
+      : exponential_moving_average(q_ref[i], q_target[i], params_.filter.q_ref);
+
+    q[i] = initialize
+      ? q_meas
+      : exponential_moving_average(q[i], q_meas, params_.filter.q);    
+    
+    if (continous_joint_types.count(joint.shortname())) { // Then we are handling a continous
+                                                          // joint that is SO(2)
+      q_pin[joint.idx_q()] = std::cos(q[i]);
+      q_pin[joint.idx_q() + 1] = std::sin(q[i]);
+    } else {  // simple revolute joint case
+      q_pin[joint.idx_q()] = q[i];
+    }
+
+    dq[i] = initialize
+      ? dq_meas
+      : exponential_moving_average(dq[i], dq_meas, params_.filter.dq);
+
+    q_target[i] = initialize ? q_meas : q_target[i];
+  }
+}
+
+CallbackReturn
+CartesianController::on_activate(const rclcpp_lifecycle::State & /*previous_state*/) {
+  
+  // Update the current state with initial measurements (no EMA filtering)
+  // to avoid large initial errors
+  updateCurrentState(true);
+
+  pinocchio::forwardKinematics(model_, data_, q_pin, dq);
+  pinocchio::updateFramePlacements(model_, data_);
+
+  end_effector_pose = data_.oMf[end_effector_frame_id];
+
+  target_position_ = end_effector_pose.translation();
+  target_orientation_ = Eigen::Quaterniond(end_effector_pose.rotation());
+  desired_position_ = target_position_;
+  desired_orientation_ = target_orientation_;
+
+  // Fresh passivity budget every activation, and resync the rate limiter to whatever the
+  // target stiffness is right now (params may have changed between on_configure() and this
+  // activation) so the first update() cycle doesn't rate-limit from a stale state.
+  energy_tank_ = std::make_unique<EnergyTank>(
+    params_.stiffness_shaping.energy_tank.e0, params_.stiffness_shaping.energy_tank.e_min,
+    params_.stiffness_shaping.energy_tank.e_max);
+  stiffness_rate_limiter_->reset(stiffness_target_diagonal_);
+  stiffness_applied_diagonal_ = stiffness_target_diagonal_;
+
+  RCLCPP_INFO(get_node()->get_logger(), "Controller activated.");
+  return CallbackReturn::SUCCESS;
+}
+
+controller_interface::CallbackReturn
+CartesianController::on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/) {
+  return CallbackReturn::SUCCESS;
+}
+
+void CartesianController::parse_target_pose_() {
+  auto msg = *target_pose_buffer_.readFromRT();
+  target_position_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+  target_orientation_ = Eigen::Quaterniond(
+    msg->pose.orientation.w,
+    msg->pose.orientation.x,
+    msg->pose.orientation.y,
+    msg->pose.orientation.z);
+}
+
+void CartesianController::parse_target_joint_() {
+  auto msg = *target_joint_buffer_.readFromRT();
+  if (msg->position.size()) {
+    for (size_t i = 0; i < msg->position.size(); ++i) {
+      q_target[i] = msg->position[i];
+    }
+    /*filterJointValues(msg->name, msg->position, params_.joints, q_ref);*/
+  }
+  if (msg->velocity.size()) {
+    for (size_t i = 0; i < msg->position.size(); ++i) {
+      dq_ref[i] = msg->velocity[i];
+    }
+    /*filterJointValues(msg->name, msg->velocity, params_.joints, dq_ref);*/
+  }
+}
+
+void CartesianController::parse_target_wrench_() {
+  auto msg = *target_wrench_buffer_.readFromRT();
+  target_wrench_ << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z,
+    msg->wrench.torque.x, msg->wrench.torque.y, msg->wrench.torque.z;
+}
+
+void CartesianController::parse_target_stiffness_() {
+  auto msg = *target_stiffness_buffer_.readFromRT();
+  if (msg->data.size() != 6) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "Variable stiffness message must have exactly 6 elements, got %zu. Ignoring.",
+      msg->data.size());
+    return;
+  }
+  const double max_k_trans = params_.variable_max_stiffness.translational;
+  const double max_k_rot = params_.variable_max_stiffness.rotational;
+  std::array<double, 6> vals = {msg->data[0], msg->data[1], msg->data[2],
+                                msg->data[3], msg->data[4], msg->data[5]};
+  for (int i = 0; i < 3; ++i) {
+    if (vals[i] < 0.0 || vals[i] > max_k_trans) {
+      RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 100,
+        "Topic stiffness[%d]=%.1f out of [0, %.1f], clamping.", i, vals[i], max_k_trans);
+      vals[i] = std::clamp(vals[i], 0.0, max_k_trans);
+    }
+  }
+  for (int i = 3; i < 6; ++i) {
+    if (vals[i] < 0.0 || vals[i] > max_k_rot) {
+      RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 100,
+        "Topic stiffness[%d]=%.1f out of [0, %.1f], clamping.", i, vals[i], max_k_rot);
+      vals[i] = std::clamp(vals[i], 0.0, max_k_rot);
+    }
+  }
+  topic_stiffness_.setZero();
+  topic_stiffness_.diagonal() << vals[0], vals[1], vals[2], vals[3], vals[4], vals[5];
+  use_topic_stiffness_ = true;
+  RCLCPP_INFO_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 100,
+    "Variable stiffness received: [%.1f, %.1f, %.1f, %.1f, %.1f, %.1f]",
+    vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]);
+}
+
+void CartesianController::log_debug_info(const rclcpp::Time & time) {
+  if (!params_.log.enabled) {
+    return;
+  }
+  if (params_.log.robot_state) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "nq: " << model_.nq << ", nv: " << model_.nv);
+
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "end_effector_pos" << end_effector_pose.translation());
+    /*RCLCPP_INFO_STREAM_THROTTLE(get_node()->get_logger(),
+       * *get_node()->get_clock(),*/
+    /*                            1000, "end_effector_rot" <<
+       * end_effector_pose.rotation());*/
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "q: " << q.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "q_pin: " << q_pin.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "dq: " << dq.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "J: " << J);
+  }
+
+  if (params_.log.control_values) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "error: " << error.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "max_delta: " << max_delta_.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "q_ref: " << q_ref.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "dq_ref: " << dq_ref.transpose());
+  }
+
+  if (params_.log.controller_parameters) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "stiffness: " << stiffness);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "damping: " << damping);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "nullspace_stiffness: " << nullspace_stiffness);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "nullspace_damping: " << nullspace_damping);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000,
+      "stiffness_target (proposal §4.3, pre-shaping): "
+        << stiffness_target_diagonal_.transpose()
+        << " | stiffness_applied (post rate-limit + energy tank): "
+        << stiffness_applied_diagonal_.transpose()
+        << " | energy_tank: " << (energy_tank_ ? energy_tank_->energy() : 0.0));
+  }
+
+  if (params_.log.limits) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "joint_limits: " << model_.lowerPositionLimit.transpose() << ", "
+                       << model_.upperPositionLimit.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "velocity_limits: " << model_.velocityLimit);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "effort_limits: " << model_.effortLimit);
+  }
+
+  if (params_.log.computed_torques) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "tau_task: " << tau_task.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "tau_joint_limits: " << tau_joint_limits.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "tau_nullspace: " << tau_nullspace.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "tau_friction: " << tau_friction.transpose());
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "tau_coriolis: " << tau_coriolis.transpose());
+  }
+
+  if (params_.log.dynamic_params) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "M: " << data_.M);
+    /*RCLCPP_INFO_STREAM_THROTTLE(get_node()->get_logger(),
+       * *get_node()->get_clock(),*/
+    /*                            1000, "Mx: " << Mx);*/
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 1000, "Minv: " << data_.Minv);
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      1000,
+      "nullspace projector: " << nullspace_projection);
+  }
+
+  if (params_.log.timing) {
+    auto t_end = get_node()->get_clock()->now();
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      2000,
+      "Control loop needed: " << (t_end.nanoseconds() - time.nanoseconds()) * 1e-6 << " ms");
+  }
+}
+
+bool CartesianController::check_topic_publisher_count(const std::string & topic_name) {
+  auto topic_info = get_node()->get_publishers_info_by_topic(topic_name);
+  size_t publisher_count = topic_info.size();
+
+  if (publisher_count > max_allowed_publishers_) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(),
+      *get_node()->get_clock(),
+      2000,
+      "Topic '%s' has %zu publishers (expected max: %zu). Multiple command sources detected!",
+      topic_name.c_str(),
+      publisher_count,
+      max_allowed_publishers_);
+
+    if (!multiple_publishers_detected_) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "SAFETY WARNING: Multiple publishers detected on topic '%s'! "
+        "Ignoring commands from this topic to prevent conflicting control signals.",
+        topic_name.c_str());
+      multiple_publishers_detected_ = true;
+    }
+    return false;
+  }
+
+  if (multiple_publishers_detected_ && publisher_count <= max_allowed_publishers_) {
+    RCLCPP_INFO(
+      get_node()->get_logger(),
+      "Publisher conflict resolved on topic '%s'. Resuming message processing.",
+      topic_name.c_str());
+    multiple_publishers_detected_ = false;
+  }
+
+  return true;
+}
+
+}  // namespace variable_impedance_controllers
+#include "pluginlib/class_list_macros.hpp"
+// NOLINTNEXTLINE
+PLUGINLIB_EXPORT_CLASS(
+  variable_impedance_controllers::CartesianController, controller_interface::ControllerInterface)

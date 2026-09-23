@@ -1,0 +1,109 @@
+# Changelog
+
+## Forked as variable_impedance_controllers
+
+- Renamed from `crisp_controllers` and shipped as an independent package. See `NOTICE` for the base
+  commit and the full list of changes. Entries below this one are the original package's
+  history.
+
+## [2.4.1](https://github.com/learnsyslab/crisp_controllers/compare/v2.4.0...v2.4.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* remove rolling form industrial_ci and update readme badges ([#63](https://github.com/learnsyslab/crisp_controllers/issues/63)) ([0062739](https://github.com/learnsyslab/crisp_controllers/commit/0062739d752e76f2c0361e0ac423aeb414505b04))
+
+## [2.4.0](https://github.com/learnsyslab/crisp_controllers/compare/v2.3.1...v2.4.0) (2026-06-13)
+
+
+### Features
+
+* decouple translation from rotation in admittance MSD integration ([#57](https://github.com/learnsyslab/crisp_controllers/issues/57)) ([2df8954](https://github.com/learnsyslab/crisp_controllers/commit/2df8954a3a5f729913b9332f8d46b12f4b5917ea))
+* parameterize controller and broadcaster topics ([#60](https://github.com/learnsyslab/crisp_controllers/issues/60)) ([b39afea](https://github.com/learnsyslab/crisp_controllers/commit/b39afeaa60c9a046cfcbc46824e6ca8c91cb88ac))
+
+
+### Bug Fixes
+
+* negative nullspace damping not handled correctly ([#56](https://github.com/learnsyslab/crisp_controllers/issues/56)) ([c3af67e](https://github.com/learnsyslab/crisp_controllers/commit/c3af67e45e1940bcc557cca218657cdd1b0c5add))
+
+## [2.3.1](https://github.com/learnsyslab/crisp_controllers/compare/v2.3.0...v2.3.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* validate end_effector_frame in cartesian/admittance controllers and broadcasters, drop redundant on_activate check ([#53](https://github.com/learnsyslab/crisp_controllers/issues/53)) ([4b91853](https://github.com/learnsyslab/crisp_controllers/commit/4b918539d475f72512895e418e9d0a0b2c84cc9f))
+
+## [2.3.0](https://github.com/utiasDSL/crisp_controllers/compare/v2.2.0...v2.3.0) (2026-04-09)
+
+
+### Features
+
+* Admittance Controller ([#47](https://github.com/utiasDSL/crisp_controllers/issues/47)) ([0c51c8b](https://github.com/utiasDSL/crisp_controllers/commit/0c51c8b6413da6d3738165536897083db0c2f608))
+
+## [2.2.0](https://github.com/utiasDSL/crisp_controllers/compare/v2.1.0...v2.2.0) (2026-04-02)
+
+
+### Features
+
+* Variable Stiffness Controller ([#46](https://github.com/utiasDSL/crisp_controllers/issues/46)) ([2fc192d](https://github.com/utiasDSL/crisp_controllers/commit/2fc192d1801c99b76f3f67bda34815d2f744e64c))
+
+## [2.1.0](https://github.com/utiasDSL/crisp_controllers/compare/v2.0.0...v2.1.0) (2026-02-28)
+
+
+### Features
+
+* refactor controller state update + add regularization configurable parameter for inverse mass matrix computation  ([#40](https://github.com/utiasDSL/crisp_controllers/issues/40)) ([d682c9a](https://github.com/utiasDSL/crisp_controllers/commit/d682c9abb5837c798867def561e5220b0dfe61c8))
+
+## [1.3.0](https://github.com/utiasDSL/crisp_controllers/compare/v1.2.3...v1.3.0) (2026-02-09)
+
+
+### Features
+
+* Add new parameters for the controllers and fix reference frame when using world base jacobian ([#29](https://github.com/utiasDSL/crisp_controllers/issues/29)) ([2544834](https://github.com/utiasDSL/crisp_controllers/commit/25448340bd536416819ebce55722b57b544d7027))
+* Update docs with dynaarm ([#30](https://github.com/utiasDSL/crisp_controllers/issues/30)) ([aa2be28](https://github.com/utiasDSL/crisp_controllers/commit/aa2be286ef09b3d12a4ae35ecb9146f2f2ae2f9a))
+
+## [1.2.3](https://github.com/utiasDSL/crisp_controllers/compare/v1.2.2...v1.2.3) (2026-01-29)
+
+
+### Bug Fixes
+
+* add warning to for versions in docs ([5814498](https://github.com/utiasDSL/crisp_controllers/commit/5814498444627ff808ab9c063b8d048bcc600ad8))
+* path for videos ([e80645e](https://github.com/utiasDSL/crisp_controllers/commit/e80645e318f27f0e115c4d9081b73cf8ddaebcc9))
+
+## [1.2.2](https://github.com/utiasDSL/crisp_controllers/compare/v1.2.1...v1.2.2) (2025-12-23)
+
+
+### Bug Fixes
+
+* Bug in broadcasting frequency of pose/twist broadcasters ([98dda54](https://github.com/utiasDSL/crisp_controllers/commit/98dda5441f55dd8557d2e123b7f15f2e6de6ab9e))
+* Bug in broadcasting frequency of pose/twist broadcasters ([c1ca95f](https://github.com/utiasDSL/crisp_controllers/commit/c1ca95f765f79e8adec91c52502467620ad5b671))
+
+## [1.2.1](https://github.com/utiasDSL/crisp_controllers/compare/v1.2.0...v1.2.1) (2025-10-21)
+
+
+### Bug Fixes
+
+* Rollback jittery controller ([5d78af9](https://github.com/utiasDSL/crisp_controllers/commit/5d78af9f9f1b2b2aa3bfe089eb6b33a03ce33858))
+
+## [1.2.0](https://github.com/utiasDSL/crisp_controllers/compare/v1.1.0...v1.2.0) (2025-10-18)
+
+
+### Features
+
+* Fix Cartesian Controller to work with respect to the  base_frame indicated in the parameters and not just world frame ([#10](https://github.com/utiasDSL/crisp_controllers/issues/10)) ([da805ab](https://github.com/utiasDSL/crisp_controllers/commit/da805ab45691a66279ca88138fc2583d5e77319b))
+
+## [1.1.0](https://github.com/utiasDSL/crisp_controllers/compare/v1.0.0...v1.1.0) (2025-09-08)
+
+
+### Features
+
+* add throttled pose / twist broadcasting ([bbaae79](https://github.com/utiasDSL/crisp_controllers/commit/bbaae798c6f56804ef41e87711597ae1529f62f0))
+* add twist_broadcaster that publishes end effector local twist ([2806ca7](https://github.com/utiasDSL/crisp_controllers/commit/2806ca7eec03c48e1ef3ba305c57f9cde4b5dc5e))
+* broadcast frequency ([53eee4b](https://github.com/utiasDSL/crisp_controllers/commit/53eee4b07110edae313f6e2c0a42a1ed6f30d27e))
+
+## 1.0.0 (2025-08-10)
+
+
+### Features
+
+* added release workflow ([6c959c8](https://github.com/utiasDSL/crisp_controllers/commit/6c959c865f2b6953e6a1242fae34ab00a9d59803))

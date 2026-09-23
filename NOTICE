@@ -1,0 +1,35 @@
+Third-party software
+====================
+
+This release builds on public packages. Two of them are redistributed in
+modified form, as renamed forks under hardware/. Each fork keeps its upstream
+license file and carries a NOTICE that records the upstream commit and lists
+what was changed. Everything in those two directories remains under the
+upstream package's license.
+
+crisp_controllers  ->  hardware/variable_impedance_controllers
+  https://github.com/learnsyslab/crisp_controllers
+  release 2.4.1, commit ccbead4ba22b1a5b43ac8e81d7137c9ed7b65925
+  MIT License. Copyright (c) 2026 Learning Systems and Robotics Lab,
+  Technical University of Munich.
+  Used as the 1 kHz Cartesian impedance controller. This work adds a log-space
+  stiffness rate limiter and an energy-tank passivity guard, and integrates them
+  into the Cartesian controller.
+
+franka_ros2_teleop  ->  hardware/fr3_bilateral_teleop
+  https://github.com/frankarobotics/franka_ros2_teleop
+  commit 69ade0e3e3a344c277f0c159a37ff8bd95c30636
+  Apache License 2.0. Copyright 2025 Franka Robotics GmbH.
+  Used as the four-channel bilateral teleoperation stack. This work adds payload
+  identification, sensorless wrench estimation, compliance label extraction, the
+  demonstration recorder and the calibration/validation scripts.
+
+LeRobot
+  https://github.com/huggingface/lerobot
+  Apache License 2.0. Copyright The HuggingFace Inc. team.
+  Provides the SmolVLA backbone. The policy classes under
+  src/compliance_vla/policy/ subclass LeRobot's SmolVLA policy and flow-matching
+  modules; consult LeRobot's own license for those base classes.
+
+Franka Robotics, FR3 and related marks belong to their respective owners and are
+referred to here only to identify the hardware the experiments were run on.

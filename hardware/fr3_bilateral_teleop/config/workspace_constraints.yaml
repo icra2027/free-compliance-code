@@ -1,0 +1,41 @@
+# Workspace bounding box and nullspace posture for the follower, consumed by the future
+# variable-impedance Cartesian controller (proposal §4.3) and by anything that generates or
+# validates free-space/task waypoints against "is this actually inside the intended working
+# volume." Day 3 task: "Constrain the workspace and pin the nullspace posture. A compact,
+# consistent arm configuration buys more than any filter" (§4.1b step 4).
+#
+# nullspace_posture is real and already in use: it's exactly
+# move_to_start_example_controller's/the re-zero pose's start_joint_configuration
+# ([0, -pi/4, 0, -3pi/4, 0, pi/2, pi/4]) -- the one fixed, compact, joint-limit-safe posture
+# this rig already returns to at the start of every session (teleop_coordinator re-zero) and
+# for calibration (calibrate_payload.py, collect_free_space_sweep.py). Reusing it here rather
+# than inventing a second "nullspace" pose keeps redundancy resolution biased toward the same
+# configuration everything else already treats as canonical.
+nullspace_posture:
+  q: [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]
+  # Nullspace projection gain (rad/s per rad of joint deviation, roughly -- tune once the
+  # Cartesian controller exists and can be A/B'd against the commanded-vs-realized-stiffness
+  # validation figure required by §4.3; this default is a conservative placeholder, not a
+  # measured value, and must not be read as one).
+  gain: 2.0
+
+# workspace_bounds_m is a PLACEHOLDER, not a measured value -- unlike nullspace_posture above,
+# there is no existing verified number to reuse here. Filling in real numbers requires the
+# task fixtures (whiteboard mount, T2 connector panel) to be physically positioned and
+# measured, which per the plan happens at the earliest on Day 4 (rigid eraser mount + T2 panel
+# wiring) and is only FROZEN on Day 6 ("freeze both task setups... any change after today
+# invalidates earlier sessions"). Do not treat the box below as a safety bound -- it exists so
+# the config schema and consuming code (controller nullspace/workspace clamp, sweep waypoint
+# generation) can be written and tested now, against placeholder numbers, and swapped for real
+# measurements without an API change once the rig is frozen. Frame is the follower's own base
+# frame (panda_link0 / fr3_link0 equivalent).
+#
+# TODO(Day 4/6): replace with the actual measured envelope once T1 (whiteboard) and T2
+# (connector panel) fixtures are mounted and their reachable poses are known. Until then, this
+# is deliberately generous/unverified and must not gate any real-hardware motion.
+workspace_bounds_m:
+  status: placeholder_unmeasured
+  frame: base
+  x: [0.25, 0.80]
+  y: [-0.35, 0.35]
+  z: [0.05, 0.55]

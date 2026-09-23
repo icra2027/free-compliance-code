@@ -1,0 +1,79 @@
+{
+  "policy": "b3",
+  "seed": 0,
+  "smoke_test": true,
+  "steps": 8,
+  "lam_log_k": null,
+  "force_dropout_p": 0.15,
+  "wrench_bias_range_n": 1.0,
+  "load_vlm_weights": true,
+  "n_params": 450108598,
+  "n_trainable_params": 99943414,
+  "elapsed_sec": 4.363924264907837,
+  "log": [
+    {
+      "step": 0,
+      "grad_norm": 21.385513305664062,
+      "loss_x_eq": 1.2944645881652832,
+      "loss_log_k": 3.464723825454712,
+      "loss_gripper": 0.0,
+      "loss": 4.759188652038574
+    },
+    {
+      "step": 1,
+      "grad_norm": 18.327312469482422,
+      "loss_x_eq": 1.64035165309906,
+      "loss_log_k": 1.3274259567260742,
+      "loss_gripper": 0.0,
+      "loss": 2.967777729034424
+    },
+    {
+      "step": 2,
+      "grad_norm": 5.369223117828369,
+      "loss_x_eq": 1.2237248420715332,
+      "loss_log_k": 0.3399888277053833,
+      "loss_gripper": 0.0,
+      "loss": 1.5637136697769165
+    },
+    {
+      "step": 3,
+      "grad_norm": 11.793639183044434,
+      "loss_x_eq": 1.0366880893707275,
+      "loss_log_k": 0.854632556438446,
+      "loss_gripper": 0.0,
+      "loss": 1.8913207054138184
+    },
+    {
+      "step": 4,
+      "grad_norm": 9.814955711364746,
+      "loss_x_eq": 1.022980809211731,
+      "loss_log_k": 0.594664454460144,
+      "loss_gripper": 0.0,
+      "loss": 1.617645263671875
+    },
+    {
+      "step": 5,
+      "grad_norm": 5.943526744842529,
+      "loss_x_eq": 1.4535406827926636,
+      "loss_log_k": 0.3104684054851532,
+      "loss_gripper": 0.0,
+      "loss": 1.7640091180801392
+    },
+    {
+      "step": 6,
+      "grad_norm": 5.8820881843566895,
+      "loss_x_eq": 0.9854335188865662,
+      "loss_log_k": 0.35078224539756775,
+      "loss_gripper": 0.0,
+      "loss": 1.3362157344818115
+    },
+    {
+      "step": 7,
+      "grad_norm": 6.425987243652344,
+      "loss_x_eq": 1.4168062210083008,
+      "loss_log_k": 0.33002719283103943,
+      "loss_gripper": 0.0,
+      "loss": 1.7468334436416626
+    }
+  ]
+}

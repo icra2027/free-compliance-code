@@ -1,0 +1,150 @@
+#  Copyright (c) 2025 Franka Robotics GmbH	
+#	
+#  Licensed under the Apache License, Version 2.0 (the "License");	
+#  you may not use this file except in compliance with the License.	
+#  You may obtain a copy of the License at	
+#	
+#      http://www.apache.org/licenses/LICENSE-2.0	
+#	
+#  Unless required by applicable law or agreed to in writing, software	
+#  distributed under the License is distributed on an "AS IS" BASIS,	
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.	
+#  See the License for the specific language governing permissions and	
+#  limitations under the License.
+
+/**:
+  controller_manager:
+    ros__parameters:
+      update_rate: 1000
+      thread_priority: 98
+
+      leader_controller:
+        type: fr3_bilateral_teleop/TeleopLeaderController
+
+      follower_controller:
+        type: fr3_bilateral_teleop/TeleopFollowerController
+
+      franka_robot_state_broadcaster:
+        type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
+        state_interfaces:
+          robot_state
+
+      joint_state_broadcaster:
+        type: joint_state_broadcaster/JointStateBroadcaster
+
+      move_to_start_example_controller:
+        type: franka_example_controllers/MoveToStartExampleController
+
+      # Calibration-only: not spawned during normal teleoperation, only by
+      # calibrate_payload.launch.py. Harmless to have loaded (unused) otherwise.
+      payload_model_broadcaster:
+        type: fr3_bilateral_teleop/PayloadModelBroadcaster
+
+
+/**:
+  leader_controller:
+    ros__parameters:
+      arm_id: "fr3"
+      # Force channel follower -> leader (feel): scales the follower's sensed contact
+      # torque before it is reflected back to the leader. Independent of the
+      # follower's k_gains/d_gains (position channel, tuned for tracking).
+      force_reflection_gains:
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+
+/**:
+  follower_controller:
+    ros__parameters:
+      arm_id: "fr3"
+      k_gains:
+        - 600.0
+        - 600.0
+        - 600.0
+        - 600.0
+        - 250.0
+        - 150.0
+        - 50.0
+      d_gains:
+        - 30.0
+        - 30.0
+        - 30.0
+        - 30.0
+        - 10.0
+        - 10.0
+        - 5.
+      # Caps how fast the position goal (q_goal, before k_gains/d_gains) can move toward
+      # the leader's raw commanded position, in rad/s. Set above normal hand-guided teleop
+      # speeds so it's a no-op during regular operation; it only engages to smooth out a
+      # large discontinuity in the leader's raw position, e.g. right when this controller
+      # reactivates after the lerobot recorder's post-episode home move (which deliberately
+      # leaves the leader wherever the operator's hand is) -- without it, that reactivation
+      # snaps q_goal straight to the leader's current position and the resulting position
+      # error goes through k_gains_ as a torque spike.
+      max_goal_slew_rate: 2.0
+      # Force channel leader -> follower (feel): scales the leader's own sensed
+      # external torque (the operator's applied force) before it is fed forward
+      # into the follower. Independent of k_gains/d_gains above (position channel,
+      # tuned for tracking).
+      force_feedforward_gains:
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+
+/**:
+  franka_robot_state_broadcaster:
+    ros__parameters:
+      lock_try_count: 5 # Number of attempts to acquire the lock in a single on_update()
+      lock_sleep_interval: 5 # microseconds sleep between attempts
+      lock_log_error: true #  Log error if lock acquisition fails - false == do not log  
+      lock_update_success: false # return update OK, although lock fails (no update occurs)
+
+/**:
+  joint_state_broadcaster:
+    ros__parameters:
+      arm_id: "fr3"
+      joints:
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
+
+/**:
+  move_to_start_example_controller:
+    ros__parameters:
+      k_gains:
+        - 600.0
+        - 600.0
+        - 600.0
+        - 600.0
+        - 250.0
+        - 150.0
+        - 50.0
+      d_gains:
+        - 30.0
+        - 30.0
+        - 30.0
+        - 30.0
+        - 10.0
+        - 10.0
+        - 5.0
+
+/**:
+  payload_model_broadcaster:
+    ros__parameters:
+      # controller_manager runs at 1000 Hz (see update_rate above); franka::Model evaluation
+      # (mass matrix + Jacobian + gravity + Coriolis every cycle) is too heavy to do at that
+      # rate without risking the control loop's timing. 50 Hz is far more than the calibration
+      # regression needs (static holds and slow point-to-point transits).
+      publish_decimation: 20

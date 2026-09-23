@@ -1,0 +1,36 @@
+{
+  "per_axis_coverage_within_contact": {
+    "fx": 0.9495688790856226,
+    "fy": 0.8608381792660919,
+    "fz": 0.8644475636655303,
+    "tx": 0.805694806496892,
+    "ty": 0.6417685983557249,
+    "tz": 0.8854020453178264
+  },
+  "overall_mean": 0.8346200120312813,
+  "n_episodes_ok": 91,
+  "n_episodes_failed_frame_fit": 1,
+  "extraction_args": {
+    "input": null,
+    "output_dir": null,
+    "window_sec": 0.3,
+    "output_rate_hz": 30.0,
+    "lam": 0.1,
+    "d_max": 500.0,
+    "kappa_max": 1000.0,
+    "contact_force_threshold": 2.0,
+    "frame_fit_force_threshold": 8.0,
+    "contact_fraction_required": 0.8,
+    "max_planarity_ratio": 0.15,
+    "sigma_f": [
+      0.726,
+      0.418,
+      0.461,
+      0.275,
+      0.434,
+      0.155
+    ],
+    "no_figure": false,
+    "self_test": false
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "summary": [
+    {
+      "operator_id": "A",
+      "manner": "firmly",
+      "n": 24,
+      "mean_force_n": 11.387977673224569,
+      "sd_force_n": 1.6481409699723468
+    },
+    {
+      "operator_id": "A",
+      "manner": "normally",
+      "n": 24,
+      "mean_force_n": 7.852022792898097,
+      "sd_force_n": 0.7765001397280469
+    },
+    {
+      "operator_id": "B",
+      "manner": "firmly",
+      "n": 15,
+      "mean_force_n": 14.640060544128152,
+      "sd_force_n": 2.588396910570098
+    },
+    {
+      "operator_id": "B",
+      "manner": "normally",
+      "n": 14,
+      "mean_force_n": 7.4863449460774225,
+      "sd_force_n": 0.5887555318938353
+    }
+  ],
+  "cohens_d": {
+    "operator_A_firmly_vs_normally_d": 2.744713874166392,
+    "operator_B_firmly_vs_normally_d": 3.749119307373398,
+    "normally_operator_B_vs_A_d": -0.5118543865575015,
+    "firmly_operator_B_vs_A_d": 1.5824120284117658
+  }
+}

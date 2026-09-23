@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>variable_impedance_controllers</name>
+  <version>0.1.0</version>
+  <description>
+    ros2_control Cartesian impedance / operational-space controllers with log-space stiffness
+    rate limiting and energy-tank passivity, for executing policy-commanded variable stiffness.
+    Derived from https://github.com/learnsyslab/crisp_controllers.
+  </description>
+  <maintainer email="anonymous@example.com">Anonymous</maintainer>
+  <license file="LICENSE.md">MIT</license>
+  <url type="repository">https://github.com/learnsyslab/crisp_controllers</url>
+  <author email="daniel.san.jose.pro@tum.de">Daniel San Jose Pro</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>controller_interface</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>generate_parameter_library</depend>
+  <depend>pinocchio</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>realtime_tools</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+
+</package>

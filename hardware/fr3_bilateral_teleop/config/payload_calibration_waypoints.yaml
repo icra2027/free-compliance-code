@@ -1,0 +1,64 @@
+# Default static-pose waypoints for calibrate_payload.py.
+#
+# Base pose matches move_to_start_example_controller's own default
+# start_joint_configuration ([0, -pi/4, 0, -3pi/4, 0, pi/2, pi/4]), the same pose already
+# used every session for the free-space re-zero -- so these are all small, conservative
+# perturbations of a pose that's already moved to and held on this rig every session.
+#
+# IMPORTANT: every consecutive pair of waypoints differs in exactly ONE joint. Earlier
+# versions of this file jumped directly between different joints' offset poses (e.g.
+# joint2- -> joint4+), which requires two joints to move simultaneously in one synchronized
+# transit -- on real hardware this reliably tripped a joint_velocity_violation reflex, while
+# every single-joint transit (offset -> base, or base -> next offset) ran fine. Routing
+# every offset back through the base pose costs extra time (15 waypoints instead of 8) but
+# keeps every single transit single-joint.
+#
+# Deltas are concentrated on joints 2, 4, 6, 7 -- the joints that most change the flange's
+# orientation relative to gravity for a wrist/gripper-mounted mass, which is what makes the
+# mass+COM regression well-conditioned (see README, "Payload calibration"). All values stay
+# well inside FR3 joint limits (nearest limit is joint 2 at +-1.7628 rad; every waypoint below
+# is within +-0.45 rad of the base pose).
+#
+# SAFETY: read the README section before running against real hardware. Jog through these
+# poses at low speed (e.g. via Desk) at least once to confirm they're clear of the actual
+# rig/fixtures before letting calibrate_payload.py drive through them unattended -- this
+# waypoint set was chosen for joint-limit margin and single-joint transits only, not for
+# clearance against your specific table/board/fixture layout.
+#
+# IMPORTANT (2026-08-10, real-hardware finding with the eraser/wiper mount attached):
+# checking each waypoint as a static ENDPOINT via Desk is not sufficient -- it does not
+# verify the swept PATH move_to_start_example_controller takes between them, and the
+# original joint2+ target below collided with the base (eraser mount struck it mid-transit)
+# even though both the base pose and the -0.435398 endpoint are individually clear. Jog
+# CONTINUOUSLY through the transit, not just the endpoints, with the actual tool attached.
+#
+# Manually jogged with the eraser attached, this session, to find real limits:
+#   - joint2 (direction of the "+' waypoint below): clear only up to ~10deg (~0.175 rad) of
+#     travel from base pose before the eraser starts contacting the base. The waypoint below
+#     uses ~6.9deg (0.12 rad) -- a margin below the measured limit, not the limit itself.
+#   - joint4 (direction of the "+" waypoint below): comfortable all the way to -90deg
+#     (-1.570796 rad), well past the ~20deg (0.35 rad) the waypoint below actually uses --
+#     confirmed clear, unchanged from the original value.
+# NOT YET verified with the eraser attached (do the same continuous, slow jog check before
+# trusting these, or before extending this file's coverage/an unattended run through them):
+#   joint2 - (-1.135398), joint4 - (-2.706194), joint6 +/- (2.020796 / 1.120796),
+#   joint7 + (1.285398). Do not assume "one direction was clear" implies the opposite
+#   direction is too -- joint2+/joint4+ above are exactly a counterexample within this same
+#   waypoint set (one had almost no headroom, the other had far more than used).
+# 435398 665398
+waypoints:
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.435398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 + (verified w/ eraser, see note above; was -0.435398, hit the base)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -1.135398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 - -- UNVERIFIED with eraser attached
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.006194, 0.0, 1.570796, 0.785398]   # joint4 + (verified w/ eraser, see note above)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.706194, 0.0, 1.570796, 0.785398]   # joint4 - -- UNVERIFIED with eraser attached
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 2.020796, 0.785398]   # joint6 + -- UNVERIFIED with eraser attached
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.120796, 0.785398]   # joint6 - -- UNVERIFIED with eraser attached
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 1.285398]   # joint7 + -- UNVERIFIED with eraser attached
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose

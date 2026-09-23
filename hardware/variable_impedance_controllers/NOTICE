@@ -1,0 +1,21 @@
+variable_impedance_controllers
+
+This package is a modified version of crisp_controllers
+  https://github.com/learnsyslab/crisp_controllers
+  release 2.4.1, commit ccbead4ba22b1a5b43ac8e81d7137c9ed7b65925
+  Copyright (c) 2026 Learning Systems and Robotics Lab, Technical University of Munich
+  MIT License -- see LICENSE.md, which applies to this whole package.
+
+Changes from the original:
+  * Renamed the package, C++ namespace, include directory, plugin library and
+    plugin class names from crisp_controllers to variable_impedance_controllers,
+    so both can be installed side by side.
+  * Added include/variable_impedance_controllers/utils/log_space_stiffness_rate_limiter.hpp
+    and utils/energy_tank.hpp, with tests/test_log_space_stiffness_rate_limiter.cpp
+    and tests/test_energy_tank.cpp.
+  * Modified CartesianController (include/.../cartesian_controller.hpp,
+    src/cartesian_controller.cpp, src/cartesian_controller.yaml) to run the target
+    stiffness through both every control cycle, with a new stiffness_shaping
+    parameter block and ~/diagnostics topics.
+  * Removed the documentation website, media, pixi/Python tooling and CI
+    workflows; rewrote README.md.

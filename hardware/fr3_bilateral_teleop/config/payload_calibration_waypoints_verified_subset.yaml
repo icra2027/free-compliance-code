@@ -1,0 +1,24 @@
+# Trimmed subset of payload_calibration_waypoints.yaml containing ONLY the two directions
+# actually verified clear with the eraser/wiper mount attached as of 2026-08-10 (see the main
+# file's header note for the measured limits and margins). Use this to make progress on
+# payload calibration today while joint2-/joint4-/joint6+/joint6-/joint7+ are still being
+# jog-verified with the eraser attached.
+#
+# Tradeoff: fewer, less orientation-diverse poses means a weaker-conditioned mass/COM
+# regression than the full 15-waypoint set (which sweeps 4 joints x 2 directions). This is
+# not silently dangerous -- calibrate_payload.py's own quality gate checks the regression's
+# condition number and REFUSES to write a payload file if it's not well-conditioned enough,
+# rather than writing a bad number -- but don't be surprised if this subset fails the gate
+# where the full set would pass. If it fails, that's the gate doing its job; the fix is
+# finishing the remaining jog-verification and using the full file, not raising the gate's
+# threshold.
+#
+# Usage:
+#   ros2 run fr3_bilateral_teleop calibrate_payload.py --namespace franka_teleop/follower \
+#     --waypoints-file install/fr3_bilateral_teleop/share/fr3_bilateral_teleop/config/payload_calibration_waypoints_verified_subset.yaml
+waypoints:
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.665398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 + (verified w/ eraser, margin below measured ~10deg limit)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.006194, 0.0, 1.570796, 0.785398]   # joint4 + (verified w/ eraser, comfortable to -90deg)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose

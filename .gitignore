@@ -1,0 +1,32 @@
+# Build and packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Python bytecode and tooling caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environments
+.venv/
+venv/
+
+# colcon output, if the hardware/ packages are built in place.
+hardware/build/
+hardware/install/
+hardware/log/
+
+# Data, checkpoints and run outputs are not part of the code release.
+checkpoints/
+dataset/
+data_*/
+wandb/
+*.ckpt
+*.safetensors
+
+# OS
+.DS_Store

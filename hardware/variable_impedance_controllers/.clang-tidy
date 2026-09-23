@@ -1,0 +1,41 @@
+Checks: >
+  # Disable all checks by default to explicitly enable those you want
+  -*,
+
+  # Bug Prone Checks: Focus on potential bugs and common mistakes
+  bugprone-*,
+
+  # Modernize Checks: Suggest modern C++ features and idioms
+  modernize-*,
+
+  # Performance Checks: Identify potential performance pitfalls
+  performance-*,
+
+  # Readability Checks: Improve code readability and maintainability
+  readability-*,
+
+  # Specific exceptions or stricter rules
+  -modernize-use-trailing-return-type, # Often generates noisy suggestions
+
+  # NOTE: These slow checks are disabled for pre-commit speed.
+  # Consider running them in CI:
+  # - clang-analyzer-* (deep dataflow analysis)
+  # - cppcoreguidelines-* (many checks, some overlap)
+  # - misc-*
+
+WarningsAsErrors: >
+  bugprone-*,
+
+HeaderFilterRegex: '^((?!/opt/ros|/usr/include).)*$'
+
+# AnalyzeTemporaryDtors: true
+# Disabled for speed. Enable in CI for thorough analysis.
+
+FormatStyle: file
+# Integrate with .clang-format to ensure consistent formatting options.
+
+CheckOptions:
+  # bugprone-argument-comment.StrictMode: 1
+  # readability-function-size.StatementThreshold: 800
+  # google-readability-braces-around-statements.ShortStatementLines: 1
+  # cert-str34-c.Strip: 'printf,sprintf,log'

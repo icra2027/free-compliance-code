@@ -1,0 +1,57 @@
+{
+  "policy": "b2",
+  "seed": 0,
+  "smoke_test": true,
+  "steps": 6,
+  "lam_log_k": null,
+  "force_dropout_p": 0.15,
+  "wrench_bias_range_n": 1.0,
+  "load_vlm_weights": true,
+  "n_params": 450104272,
+  "n_trainable_params": 99939088,
+  "elapsed_sec": 1.4826271533966064,
+  "log": [
+    {
+      "step": 0,
+      "grad_norm": 13.062833786010742,
+      "loss_x_eq": 1.1512174606323242,
+      "loss_gripper": 0.0,
+      "loss": 1.1512174606323242
+    },
+    {
+      "step": 1,
+      "grad_norm": 15.675276756286621,
+      "loss_x_eq": 3.455253839492798,
+      "loss_gripper": 0.0,
+      "loss": 3.455253839492798
+    },
+    {
+      "step": 2,
+      "grad_norm": 12.838997840881348,
+      "loss_x_eq": 1.8198496103286743,
+      "loss_gripper": 0.0,
+      "loss": 1.8198496103286743
+    },
+    {
+      "step": 3,
+      "grad_norm": 8.045037269592285,
+      "loss_x_eq": 1.9729610681533813,
+      "loss_gripper": 0.0,
+      "loss": 1.9729610681533813
+    },
+    {
+      "step": 4,
+      "grad_norm": 6.407985687255859,
+      "loss_x_eq": 1.390468716621399,
+      "loss_gripper": 0.0,
+      "loss": 1.390468716621399
+    },
+    {
+      "step": 5,
+      "grad_norm": 8.685318946838379,
+      "loss_x_eq": 1.4788275957107544,
+      "loss_gripper": 0.0,
+      "loss": 1.4788275957107544
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Pose set for static_hanging_mass_calibration.py.
+#
+# Deliberately reuses ONLY the two non-base directions verified clear with the eraser/wiper
+# mount attached, real hardware, 2026-08-10 (see payload_calibration_waypoints_verified_subset.yaml,
+# whose header has the full story). This script holds each pose for longer than the payload
+# calibration's regression needs (settle + sample time per mass, times several masses), while
+# ALSO not declaring the hung mass to set_load -- so the arm is relying on the internal gravity
+# model being right for a real, undeclared extra load for a nontrivial stretch of time. That is
+# a strictly more demanding hold than anything already verified on this rig, which is exactly
+# why this file stays restricted to the two directions with confirmed real-hardware margin
+# rather than pulling in the unverified directions from the full payload_calibration_waypoints.yaml.
+#
+# Do not extend this file until the remaining directions (joint2-, joint4-, joint6+/-, joint7+)
+# are jog-verified clear with the eraser attached -- see that file's header for the checklist.
+waypoints:
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.665398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint2 + (verified w/ eraser)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+  - [0.0, -0.785398, 0.0, -2.006194, 0.0, 1.570796, 0.785398]   # joint4 + (verified w/ eraser)
+  - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
+pose_labels:
+  - base
+  - joint2_plus
+  - base_repeat_1
+  - joint4_plus
+  - base_repeat_2

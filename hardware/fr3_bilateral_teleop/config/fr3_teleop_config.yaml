@@ -1,0 +1,19 @@
+# Example configuration file to setup basic teleoperation for a Franka robot.
+# Replace the IP addresses with the actual robot addresses
+
+# Uncomment to change the HOME position both arms move to before teleop starts (move_to_start_
+# example_controller / teleop_coordinator's free-space re-zero). Default shown below is Franka's
+# standard "ready" pose. Must stay a joint-limit-safe, collision-free posture for your cell --
+# see fr3_bilateral_teleop's README, "Configuration options", for details and per-pair/per-robot
+# overrides.
+# start_joint_configuration: [0.0, -0.7853981633974483, 0.0, -2.356194490192345, 0.0, 1.5707963267948966, 0.7853981633974483]
+
+pairs:
+  - namespace: franka_teleop
+    leader:
+      robot_ip: 192.168.100.2
+    follower:
+      robot_ip: 192.168.101.2
+
+load_gripper: false 
+start_joint_configuration: [0.0, -0.7853981633974483, 0.0, -2.356194490192345, 0.0, 1.5707963267948966, 0.7853981633974483]

@@ -1,0 +1,7 @@
+# Slower than the shared default (0.2, used for the normal one-shot session-start move) --
+# calibration retargets move_to_start_example_controller repeatedly across many waypoints,
+# so extra margin against the arm's velocity limits is worth the added time.
+/**:
+  move_to_start_example_controller:
+    ros__parameters:
+      speed_factor: 0.1

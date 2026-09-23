@@ -1,0 +1,63 @@
+{
+  "policy": "b0",
+  "seed": 0,
+  "smoke_test": true,
+  "steps": 6,
+  "lam_log_k": null,
+  "force_dropout_p": null,
+  "wrench_bias_range_n": null,
+  "load_vlm_weights": true,
+  "n_params": 450046176,
+  "n_trainable_params": 99880992,
+  "elapsed_sec": 1.4445464611053467,
+  "log": [
+    {
+      "step": 0,
+      "grad_norm": 11.229989051818848,
+      "losses_after_forward": 1.4955018758773804,
+      "losses_after_in_ep_bound": 1.4955018758773804,
+      "losses_after_rm_padding": 1.4955018758773804,
+      "loss": 1.4955018758773804
+    },
+    {
+      "step": 1,
+      "grad_norm": 19.290481567382812,
+      "losses_after_forward": 3.141739845275879,
+      "losses_after_in_ep_bound": 3.141739845275879,
+      "losses_after_rm_padding": 3.141739845275879,
+      "loss": 3.141739845275879
+    },
+    {
+      "step": 2,
+      "grad_norm": 3.996274948120117,
+      "losses_after_forward": 1.8165736198425293,
+      "losses_after_in_ep_bound": 0.5544632077217102,
+      "losses_after_rm_padding": 0.5544632077217102,
+      "loss": 0.5544632077217102
+    },
+    {
+      "step": 3,
+      "grad_norm": 5.339883327484131,
+      "losses_after_forward": 1.4774363040924072,
+      "losses_after_in_ep_bound": 1.0930464267730713,
+      "losses_after_rm_padding": 1.0930464267730713,
+      "loss": 1.0930464267730713
+    },
+    {
+      "step": 4,
+      "grad_norm": 4.569673538208008,
+      "losses_after_forward": 1.3300812244415283,
+      "losses_after_in_ep_bound": 1.2658634185791016,
+      "losses_after_rm_padding": 1.2658634185791016,
+      "loss": 1.2658634185791016
+    },
+    {
+      "step": 5,
+      "grad_norm": 4.365481376647949,
+      "losses_after_forward": 1.1323480606079102,
+      "losses_after_in_ep_bound": 1.1323480606079102,
+      "losses_after_rm_padding": 1.1323480606079102,
+      "loss": 1.1323480606079102
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>fr3_bilateral_teleop</name>
+  <version>0.1.0</version>
+  <description>
+    Four-channel bilateral teleoperation of a Franka FR3 with another FR3 as input device, plus
+    payload identification, sensorless wrench estimation, compliance label extraction and the
+    calibration/validation tooling. Derived from
+    https://github.com/frankarobotics/franka_ros2_teleop.
+  </description>
+  <maintainer email="anonymous@example.com">Anonymous</maintainer>
+  <license file="LICENSE">Apache-2.0</license>
+  <url type="repository">https://github.com/frankarobotics/franka_ros2_teleop</url>
+  <author email="support@franka.de">Franka Robotics GmbH</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <depend>controller_interface</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>franka_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>franka_semantic_components</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>realtime_tools</depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <!-- dataset_tools/: scipy for label extraction, pandas for reading LeRobot datasets -->
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-pandas</exec_depend>
+  <exec_depend>franka_bringup</exec_depend>
+  <!-- launch/validate_variable_impedance.launch.py spawns variable_impedance_controllers/CartesianController
+       and variable_impedance_controllers/PoseBroadcaster (see config/variable_impedance_validation_controllers.yaml).
+       Runtime-only: this package does not build/link against variable_impedance_controllers. -->
+  <exec_depend>variable_impedance_controllers</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

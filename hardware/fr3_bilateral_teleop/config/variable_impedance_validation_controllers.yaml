@@ -1,0 +1,176 @@
+#  Copyright (c) 2026 Franka Robotics GmbH
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# controller_manager config for validating the proposal §4.3 variable-impedance controller
+# (variable_impedance_controllers/CartesianController, patched with the log-space rate limiter + energy
+# tank -- see fr3_bilateral_teleop/README.md "Variable-impedance controller" and
+# variable_impedance_controllers/README.md). Loaded by launch/validate_variable_impedance.launch.py.
+#
+# Deliberately a SEPARATE config from teleop_controllers.yaml: this brings up a single arm
+# with variable_impedance_controllers' controller instead of the teleop leader/follower pair, and is meant
+# to run against `use_fake_hardware:=true` (no physical robot needed) as well as, later, real
+# hardware with no changes beyond the launch arg -- see scripts/probe_variable_impedance_sinusoid.py
+# and tasks.md Day 5 for what's still open (a real-hardware run; this config/script only
+# closes the "does the wiring work" gap, not the physical-dynamics one).
+
+/**:
+  controller_manager:
+    ros__parameters:
+      update_rate: 1000
+      thread_priority: 98
+
+      joint_state_broadcaster:
+        type: joint_state_broadcaster/JointStateBroadcaster
+
+      # variable_impedance_controllers computes its own dynamics via Pinocchio and does NOT need this --
+      # defined here only because teleop_single_robot.launch.py's generate_robot_nodes()
+      # unconditionally spawns it on real hardware (use_fake_hardware:=false). Omitting it
+      # from this config makes that spawn fail outright ("'type' param was not defined"),
+      # confirmed on a real-hardware run -- see tasks.md Day 5.
+      franka_robot_state_broadcaster:
+        type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
+        state_interfaces:
+          robot_state
+
+      pose_broadcaster:
+        type: variable_impedance_controllers/PoseBroadcaster
+
+      variable_impedance_controller:
+        type: variable_impedance_controllers/CartesianController
+
+      # Loaded inactive alongside variable_impedance_controller (see
+      # validate_variable_impedance.launch.py) so the arm can be reset to
+      # initial_joint_positions on demand via a plain `ros2 control switch_controllers` --
+      # both claim the effort interface, so only one may be active at a time.
+      move_to_start_example_controller:
+        type: franka_example_controllers/MoveToStartExampleController
+
+/**:
+  franka_robot_state_broadcaster:
+    ros__parameters:
+      lock_try_count: 5
+      lock_sleep_interval: 5
+      lock_log_error: true
+      lock_update_success: false
+
+/**:
+  joint_state_broadcaster:
+    ros__parameters:
+      arm_id: "fr3"
+      joints:
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
+
+/**:
+  pose_broadcaster:
+    ros__parameters:
+      joints:
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
+      # fr3_link8, not fr3_hand_tcp: always present regardless of load_gripper, so this
+      # validation doesn't need the gripper/franka_gripper node at all.
+      end_effector_frame: "fr3_link8"
+      base_frame: "fr3_link0"
+      publish_frequency: 250.0
+
+/**:
+  variable_impedance_controller:
+    ros__parameters:
+      joints:
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
+      end_effector_frame: "fr3_link8"
+      base_frame: "fr3_link0"
+      use_operational_space: false
+
+      # Baseline/static stiffness, used only before the first target_stiffness message
+      # arrives (or if variable_stiffness.enabled is set false). The probe script drives
+      # stiffness via the topic, not these -- see variable_stiffness below.
+      task:
+        k_pos_x: 300.0
+        k_pos_y: 300.0
+        k_pos_z: 300.0
+        k_rot_x: 20.0
+        k_rot_y: 20.0
+        k_rot_z: 20.0
+
+      # Real Franka: firmware already compensates gravity internally on the torque
+      # interface (see fr3_bilateral_teleop/README.md "franka_hardware effort interface" /
+      # tasks.md Day 5 for how this was confirmed) -- leave false even under fake hardware
+      # so this config carries over to a real-hardware run unchanged.
+      use_gravity_compensation: false
+      # NOT auto-compensated by the firmware; add explicitly (matches libfranka's own
+      # cartesian_impedance_control.cpp example and this project's from-scratch draft).
+      use_coriolis_compensation: true
+      use_friction: false
+
+      nullspace:
+        # Reuses the SAME real, already-verified fixed posture used for re-zero/payload
+        # calibration elsewhere in this project (config/workspace_constraints.yaml
+        # nullspace_posture.q) -- not workspace_constraints.yaml's own `gain` field, which
+        # that file itself documents as an untuned placeholder in unverified units.
+        stiffness: 5.0
+        projector_type: "kinematic"
+
+      variable_max_stiffness:
+        translational: 1500.0  # proposal §4.1 realizable range
+        rotational: 100.0
+
+      variable_stiffness:
+        enabled: true
+        topic: "target_stiffness"
+
+      # Proposal §4.3 mechanism this session's patch adds (see variable_impedance_controllers/README.md).
+      stiffness_shaping:
+        enabled: true
+        gamma: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+        min_stiffness_translational: 50.0
+        min_stiffness_rotational: 5.0
+        energy_tank:
+          e0: 1.0
+          e_min: 0.0
+          e_max: 5.0
+
+      limit_torques: true
+      max_delta_tau: 0.5
+      limit_error: true
+
+      log:
+        enabled: true
+        controller_parameters: true
+        timing: false
+
+/**:
+  move_to_start_example_controller:
+    ros__parameters:
+      # Same proven gains teleop_controllers.yaml uses for this same controller on real
+      # hardware -- reused rather than re-tuned. start_joint_configuration is overridden per
+      # launch by validate_variable_impedance.launch.py's initial_joint_positions arg.
+      k_gains: [600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0]
+      d_gains: [30.0, 30.0, 30.0, 30.0, 10.0, 10.0, 5.0]

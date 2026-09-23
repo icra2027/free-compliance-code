@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compliance-vla"
+version = "1.0.0"
+description = "Compliance labels from bilateral demonstrations, and the VLA policy they supervise"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+# Anonymized for double-blind review.
+authors = [{ name = "Anonymous Authors" }]
+keywords = ["robotics", "manipulation", "compliance", "impedance", "teleoperation"]
+
+# The core -- extraction, wrench estimation, benchmark, ensembling, safety --
+# deliberately needs nothing but numpy and scipy, so a reviewer can run and test
+# it without a GPU, a robot, or a multi-gigabyte install.
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+# The compliance-output policy head and its losses.
+policy = ["torch>=2.0"]
+# Dataset assembly, analysis scripts and figure generation.
+analysis = ["pandas>=2.0", "matplotlib>=3.7", "scikit-learn>=1.3", "pyyaml>=6.0"]
+dev = ["pytest>=7.4", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+# -ra surfaces the reason every test was skipped, so "passed" on a machine
+# without torch cannot be mistaken for "the policy code was exercised".
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: exercises the full extraction pipeline; deselect with -m 'not slow'",
+]
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+# The research scripts under scripts/ and the packages under hardware/ are the
+# record of what actually ran for the paper. They are deliberately not
+# reformatted to satisfy a linter that was not applied to them when the results
+# were produced, so they are not linted.
+include = ["src/compliance_vla/**/*.py", "tests/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = [
+    "E501",  # long lines: the extracted modules keep their original formatting
+    "B905",  # zip(strict=) is not available on the oldest supported Python
+]
+
+# Modules lifted verbatim from the scripts that produced the paper's results.
+# tests/test_provenance.py compares them against those originals, so modernizing
+# their type annotations (UP006/UP035/UP045: typing.List -> list, and so on)
+# would make the packaged copy differ from the code that was actually run. The
+# annotations are left exactly as they were; the provenance guarantee is worth
+# more than the idiom.
+[tool.ruff.lint.per-file-ignores]
+"src/compliance_vla/geometry.py" = ["UP"]
+"src/compliance_vla/extraction.py" = ["UP"]
+"src/compliance_vla/synthetic.py" = ["UP"]
+"src/compliance_vla/wrench.py" = ["UP"]
+"src/compliance_vla/frames.py" = ["UP"]
+# The policy modules are this work's own code, but they were written against
+# LeRobot's conventions and were not linted when the results were produced.
+"src/compliance_vla/policy/*.py" = ["UP", "I001", "F401", "E402"]

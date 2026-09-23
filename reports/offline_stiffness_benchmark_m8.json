@@ -1,0 +1,130 @@
+{
+  "splits": {
+    "train": [
+      "demo4"
+    ],
+    "val": [
+      "demo1"
+    ],
+    "test": [
+      "demo3"
+    ]
+  },
+  "per_axis": {
+    "fx": {
+      "status": "ok",
+      "n_train": 2589,
+      "n_val": 2633,
+      "n_test": 4249,
+      "constant_rmse_log_k": 1.2012757945777441,
+      "nearest_neighbour_rmse_log_k": 1.4599239236942103,
+      "learned_rmse_log_k": 1.2154077999279111,
+      "learned_vs_constant_improvement_ratio": 0.9883726224638305,
+      "learned_vs_nn_improvement_ratio": 1.2011803147723767,
+      "learned_beats_constant": false,
+      "hyperparameters": {
+        "length_scale": 30,
+        "ridge_lambda": 0.01
+      }
+    },
+    "fy": {
+      "status": "ok",
+      "n_train": 2354,
+      "n_val": 2494,
+      "n_test": 3738,
+      "constant_rmse_log_k": 1.0342557652942064,
+      "nearest_neighbour_rmse_log_k": 1.1045591199841056,
+      "learned_rmse_log_k": 0.8362645238551631,
+      "learned_vs_constant_improvement_ratio": 1.2367567148804872,
+      "learned_vs_nn_improvement_ratio": 1.3208250361884415,
+      "learned_beats_constant": true,
+      "hyperparameters": {
+        "length_scale": 10,
+        "ridge_lambda": 0.1
+      }
+    },
+    "fz": {
+      "status": "ok",
+      "n_train": 2279,
+      "n_val": 2516,
+      "n_test": 3827,
+      "constant_rmse_log_k": 0.982898330278877,
+      "nearest_neighbour_rmse_log_k": 1.2075721482278525,
+      "learned_rmse_log_k": 0.9079507075634273,
+      "learned_vs_constant_improvement_ratio": 1.082545915864286,
+      "learned_vs_nn_improvement_ratio": 1.3299974747180803,
+      "learned_beats_constant": true,
+      "hyperparameters": {
+        "length_scale": 30,
+        "ridge_lambda": 0.01
+      }
+    },
+    "tx": {
+      "status": "ok",
+      "n_train": 2262,
+      "n_val": 2202,
+      "n_test": 3572,
+      "constant_rmse_log_k": 0.5133131403966009,
+      "nearest_neighbour_rmse_log_k": 0.5869939145794172,
+      "learned_rmse_log_k": 0.5166921937953213,
+      "learned_vs_constant_improvement_ratio": 0.9934602197608217,
+      "learned_vs_nn_improvement_ratio": 1.1360611242598813,
+      "learned_beats_constant": false,
+      "hyperparameters": {
+        "length_scale": 30,
+        "ridge_lambda": 1.0
+      }
+    },
+    "ty": {
+      "status": "ok",
+      "n_train": 1539,
+      "n_val": 1951,
+      "n_test": 2911,
+      "constant_rmse_log_k": 0.2759459721583882,
+      "nearest_neighbour_rmse_log_k": 0.2887661538816592,
+      "learned_rmse_log_k": 0.28897498407772404,
+      "learned_vs_constant_improvement_ratio": 0.9549130110313233,
+      "learned_vs_nn_improvement_ratio": 0.9992773416123499,
+      "learned_beats_constant": false,
+      "hyperparameters": {
+        "length_scale": 30,
+        "ridge_lambda": 1.0
+      }
+    },
+    "tz": {
+      "status": "ok",
+      "n_train": 2591,
+      "n_val": 2377,
+      "n_test": 3863,
+      "constant_rmse_log_k": 0.5135614004178262,
+      "nearest_neighbour_rmse_log_k": 0.5611476591240396,
+      "learned_rmse_log_k": 0.50974359504705,
+      "learned_vs_constant_improvement_ratio": 1.0074896583456312,
+      "learned_vs_nn_improvement_ratio": 1.1008429817980252,
+      "learned_beats_constant": true,
+      "hyperparameters": {
+        "length_scale": 100,
+        "ridge_lambda": 1.0
+      }
+    }
+  },
+  "gate2": {
+    "per_axis_pass": {
+      "fx": false,
+      "fy": true,
+      "fz": true,
+      "tx": false,
+      "ty": false,
+      "tz": true
+    },
+    "n_axes_evaluated": 6,
+    "n_axes_passing": 3,
+    "all_axes_pass": false,
+    "majority_axes_pass": false,
+    "mean_constant_rmse_log_k_across_axes": 0.7535417338539405,
+    "mean_learned_rmse_log_k_across_axes": 0.7125056340444328,
+    "aggregate_improvement_ratio": 1.0575940706273048,
+    "aggregate_pass": true,
+    "verdict": "PASS"
+  }
+}

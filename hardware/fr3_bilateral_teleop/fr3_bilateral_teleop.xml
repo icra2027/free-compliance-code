@@ -1,0 +1,24 @@
+<library path="fr3_bilateral_teleop">
+    <class name="fr3_bilateral_teleop/TeleopLeaderController"
+           type="fr3_bilateral_teleop::TeleopLeaderController" base_class_type="controller_interface::ControllerInterface">
+        <description>
+            The TeleopLeaderController puts the robot in zero-gravity mode so it can be handguided.
+            It also receives the external forces from the follower's state broadcaster and replays them on the robot.
+            This way obstacles encountered by the follower can be 'felt' by the person handguiding the leader.
+        </description>
+    </class>
+    <class name="fr3_bilateral_teleop/TeleopFollowerController"
+           type="fr3_bilateral_teleop::TeleopFollowerController" base_class_type="controller_interface::ControllerInterface">
+        <description>
+            The TeleopFollowerController runs a Joint Impedance Controller that receives its target position from the leader's state brodacaster.
+        </description>
+    </class>
+    <class name="fr3_bilateral_teleop/PayloadModelBroadcaster"
+           type="fr3_bilateral_teleop::PayloadModelBroadcaster" base_class_type="controller_interface::ControllerInterface">
+        <description>
+            Publishes franka::Model quantities (gravity, Coriolis, mass matrix, flange Jacobian/pose)
+            for offline payload (mass/COM/inertia) identification. Calibration-only, not loaded during
+            normal teleoperation.
+        </description>
+    </class>
+</library>
