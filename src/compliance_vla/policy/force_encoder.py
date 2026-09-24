@@ -1,11 +1,10 @@
-"""Day 11: force-history token -- last 500ms of 6-DoF wrench, downsampled to
-20 samples, 1D-conv encoder, injected post-VLM (proposal §4.2, ForceVLA
-finding).
+"""Force-history token -- last 500ms of 6-DoF wrench, downsampled to
+20 samples, 1D-conv encoder, injected post-VLM (the ForceVLA finding).
 
 Native data-rate caveat, documented rather than smoothed over: the LeRobot
-dataset's wrench channel is already downsampled to 30Hz at build time (Day 10
+dataset's wrench channel is already downsampled to 30Hz at build time (see the
 note in run_extraction_on_dataset.py), i.e. ~15 native samples in a trailing
-500ms window, not the 20 the proposal's architecture spec calls for (implying
+500ms window, not the 20 the architecture spec calls for (implying
 a ~40Hz history). `resample_to_n_samples` linearly interpolates the native
 ~15-sample trailing window up to exactly 20 points so the conv encoder's
 input shape matches the spec, but the underlying temporal resolution is still
@@ -64,7 +63,7 @@ def wrench_bias_injection(hist, bias_range_n=1.0, training=True, generator=None)
     """Per-example, per-axis constant wrench bias in [-bias_range_n, +bias_range_n],
     added uniformly across the whole history window (simulates a
     slowly-varying sensor offset, not per-sample noise). Applied to all 6
-    wrench channels identically in N-equivalent magnitude -- the proposal
+    wrench channels identically in N-equivalent magnitude -- the method
     states "±1 N" without specifying a separate torque unit/magnitude, so
     this is a literal, documented reading rather than an invented
     force/torque split. No-op at eval time."""

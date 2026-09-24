@@ -100,7 +100,7 @@ def fit_contact_frame(
 
     `contact_force_threshold` here is deliberately a HIGHER, firmer threshold than the
     mask's general sustained-contact condition (args.contact_force_threshold, ~2N) -- real
-    Day 5 pilot data showed light/transitional contact near the mask's lower threshold
+    pilot data showed light/transitional contact near the mask's lower threshold
     (approach, retreat, grazing touches) is genuinely NOT planar (planarity_ratio 0.15-0.24
     at 2N on 4/5 real pilots), while firm, confident contact (>~6-8N) is (0.007-0.13 on the
     same demos at 8N) -- a real geometric distinction, not a bug: a light graze's contact

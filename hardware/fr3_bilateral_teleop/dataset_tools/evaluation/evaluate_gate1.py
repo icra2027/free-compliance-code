@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Evaluate GATE 1 (H1) from a set of pilot demos -- proposal §3 / tasks.md Day 5.
+"""Evaluate the H1 identifiability conditions from a set of pilot demos.
 
 Runs extract_impedance_labels.py's pipeline (imported, not reimplemented -- same pattern
 diagnose_gravity_preload.py already uses against calibrate_payload.py) against each pilot
-demo CSV and checks all three Gate 1 conditions:
+demo CSV and checks all three H1 conditions:
 
   (i)   stiffness identifiable on >= 25% of CONTACT timesteps
   (ii)  within-demo K variation > 2x estimator noise
   (iii) contact-frame anisotropy ratio > 2
 
-The proposal states (i) precisely but leaves (ii)/(iii) as qualitative statements with no
+The method states (i) precisely but leaves (ii)/(iii) as qualitative statements with no
 exact formula -- extract_impedance_labels.py already gives (i) directly (mask coverage
 restricted to contact timesteps). This script defines defensible, documented computations
-for (ii) and (iii) so Gate 1 is a single command once real pilot data exists, rather than
+for (ii) and (iii) so the H1 evaluation is a single command once real pilot data exists, rather than
 something computed by hand from the extraction reports:
 
   (ii) "estimator noise" is approximated from the SHORT-timescale (adjacent-output-step,
@@ -24,13 +24,13 @@ something computed by hand from the extraction reports:
   over all masked (identifiable) timesteps in the demo. Ratio = variation / noise.
 
   (iii) anisotropy ratio = max/min of the three TRANSLATIONAL axes' median masked K
-  (ex, ey, ez) within one demo -- matches §5's own framing for T1 ("compliant along the
+  (ex, ey, ez) within one demo -- matches the framing for T1 ("compliant along the
   normal, stiff in-plane"), i.e. comparing the board-normal axis against the two in-plane
   axes. Median, not mean, for robustness to the regression's own outlier windows.
 
 Both are reported per-demo AND pooled, with the reasoning kept visible in the output --
-this is a judgment call, not something to silently auto-decide, and the Day 5 exit
-criterion explicitly says a real decision, not a formality.
+this is a judgment call, not something to silently auto-decide: a real decision, not a
+formality.
 
 Usage:
     ros2 run fr3_bilateral_teleop evaluate_gate1.py --input pilot1.csv pilot2.csv ...
@@ -189,14 +189,14 @@ def main() -> int:
         evaluations.append(ev)
 
     if not evaluations:
-        print("\nNo demos extracted successfully -- GATE 1 cannot be evaluated.")
+        print("\nNo demos extracted successfully -- H1 cannot be evaluated.")
         return 1
 
     n_pass = sum(1 for e in evaluations if e["all_pass"])
-    print(f"\n=== GATE 1 SUMMARY: {n_pass}/{len(evaluations)} pilot demos pass all 3 "
+    print(f"\n=== H1 SUMMARY: {n_pass}/{len(evaluations)} pilot demos pass all 3 "
           f"conditions ===")
     print(
-        "Decision per tasks.md: proceed only if Gate 1 holds. This script reports per-demo "
+        "Proceed only if H1 holds. This script reports per-demo "
         "results -- the pass/fail call across the pilot SET is a judgment for you to make "
         "explicitly, not an auto-decision.")
     return 0

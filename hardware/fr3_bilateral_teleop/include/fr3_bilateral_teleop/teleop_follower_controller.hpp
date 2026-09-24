@@ -98,7 +98,7 @@ private:
   //   publish, in microseconds, the age of the leader->follower position message (channel 1)
   //   and force-feedforward message (channel 3) at the moment each is consumed, i.e.
   //   `now - header.stamp`. Meaningful only if the leader and follower clocks are synchronized
-  //   (see the proposal's Week 1 time-sync check); it is not a substitute for that check.
+  //   (see the time-sync check); it is not a substitute for that check.
   // Publishing uses realtime_tools::RealtimePublisher, which is RT-safe: it never blocks the
   // update() thread and silently drops a sample if the non-RT publish thread is still busy.
   using Float64RtPublisher = realtime_tools::RealtimePublisher<std_msgs::msg::Float64>;

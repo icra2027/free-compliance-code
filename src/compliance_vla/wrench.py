@@ -230,7 +230,7 @@ def synthetic_dataset(n_sessions: int = 6, n_per_session: int = 800, seed: int =
     """Generates data with a known smooth f_bias(q, q̇) plus noise, entirely offline -- lets
     the fit/validation pipeline (session split, RFF ridge, error reporting) be checked without
     any hardware or logged CSV, the same "verify the pipeline against synthetic data before the
-    real run" approach used for the Day 18 analysis scripts.
+    real run" approach used for the offline analysis scripts.
 
     Deliberately additive/low-order in each joint (a handful of single-joint sin/cos terms for
     the gravity-model-residual part, linear single-joint terms for the velocity/friction part)

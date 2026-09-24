@@ -34,7 +34,7 @@ imputed.
 Extracted verbatim from the reference implementation that produced the paper's
 numbers; the argparse.Namespace the original threaded through has been replaced
 by the equivalent frozen ExtractionConfig dataclass, and the plotting/CLI layers
-now live alongside in the scripts/ directory.
+now live alongside in the data_extraction/ directory.
 """
 
 import csv
@@ -134,7 +134,7 @@ def load_demo_csv(path: Path) -> Dict[str, np.ndarray]:
     return cols
 
 # ---------------------------------------------------------------------------
-# Windowed, log-space, box-constrained regression (proposal §4.1)
+# Windowed, log-space, box-constrained regression
 # ---------------------------------------------------------------------------
 
 def _fit_one_window(
@@ -195,7 +195,7 @@ def nearest_sample_indices(t: np.ndarray, output_times: np.ndarray) -> np.ndarra
 
 
 # ---------------------------------------------------------------------------
-# Identifiability mask (proposal §4.1, all four conditions)
+# Identifiability mask (all four conditions)
 # ---------------------------------------------------------------------------
 
 def compute_mask(
@@ -284,7 +284,7 @@ def extract_demo(
 
     mask_coverage = mask.mean(axis=0)
     n_contact_timesteps = int(np.sum(contact_indicator))
-    # Gate 1 (H1) condition (i) is literally "identifiable on >= 25% of CONTACT timesteps" --
+    # H1's identifiability condition (i) is literally "identifiable on >= 25% of CONTACT timesteps" --
     # report coverage restricted to that denominator, not the whole demo (most of which is
     # free-space transit/reset, which would otherwise dilute the number in an uninformative
     # direction).

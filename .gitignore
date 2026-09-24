@@ -24,6 +24,7 @@ hardware/log/
 checkpoints/
 dataset/
 data_*/
+!data_extraction/
 wandb/
 *.ckpt
 *.safetensors

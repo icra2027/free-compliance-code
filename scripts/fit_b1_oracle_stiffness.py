@@ -1,28 +1,27 @@
-"""Day 13: B1 -- oracle per-axis constant-K, grid-searched on the validation
-set (proposal §6.1 baseline table): "Same [as B0], oracle-tuned constant per-
-axis compliance (grid-searched on validation set) -- H3 -- the cheap control
-baseline. Omitting this is the single fastest route to rejection."
+"""B1 -- oracle per-axis constant-K, grid-searched on the validation set:
+the same policy as B0 with an oracle-tuned constant per-axis compliance -- the
+cheap control baseline for H3.
 
 B1's *policy* is B0 (position output, no compliance head, no force input --
-already trained, Day 12) run through the *same* low-level variable-impedance
+already trained) run through the *same* low-level variable-impedance
 controller as every other baseline, but with the controller's per-axis
 stiffness pinned to one fixed vector instead of either B0's own default
 fixed-high-stiffness or a learned/predicted one. This script's only job is
 to produce that one 6-dim K vector -- there is no new neural network here,
 by design (B1 exists specifically to show H2/H3's gain isn't just "any
-non-trivial impedance"). The vector is consumed by the Week 4 controller
+non-trivial impedance"). The vector is consumed by the controller
 integration, not by this script.
 
-**Search, not the closed-form mean.** offline_stiffness_benchmark.py's (M8,
-Day 10) "constant" baseline is the closed-form TRAIN-split mean of log K --
+**Search, not the closed-form mean.** offline_stiffness_benchmark.py's (M8)
+"constant" baseline is the closed-form TRAIN-split mean of log K --
 a sanity-check baseline for the *learned* predictor, picked for cheapness,
 not for being the best possible constant. B1 is a different, stronger
 baseline: a real grid search over candidate constant stiffnesses, clipped to
-the controller's realizable range (§4.1: 50-1500 N/m translational, 5-100
+the controller's realizable range (50-1500 N/m translational, 5-100
 N*m/rad rotational -- same K_MIN_LOG/K_MAX_LOG bounds M8 already uses,
 reused unmodified so both scripts agree on what's physically commandable),
 selected by minimizing error against the VALIDATION session specifically
-(not train, per the proposal's literal wording -- this project's frozen
+(not train, as the baseline's definition requires -- this project's frozen
 session-level split, build_dataset_splits.py: train=demo4, val=demo1,
 test=demo3), which for a scalar-target grid search is a real, if small,
 distinction from a closed-form train-mean: it can land at a different point
@@ -49,7 +48,9 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 REPO_ROOT = os.path.dirname(PROJECT_ROOT)
 EXTERNAL_SCRIPTS = os.path.join(
     PROJECT_ROOT, "hardware", "fr3_bilateral_teleop", "dataset_tools", "labeling")  # label extraction
+DATA_EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "data_extraction")  # dataset_io, panda_fk, extraction drivers
 sys.path.insert(0, EXTERNAL_SCRIPTS)
+sys.path.insert(0, DATA_EXTRACTION_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
 import dataset_io as dio  # noqa: E402
@@ -194,7 +195,7 @@ def main():
     print(f"B1 oracle constant stiffness (contact frame): "
           + ", ".join(f"{ax}={k_vector.get(ax, float('nan')):.2f}" for ax in FORCE_AXIS_NAMES))
     print(f"{n_axes_ok}/{len(FORCE_AXIS_NAMES)} axes had enough VAL data to grid-search; "
-          "axes without a value here should NOT be silently defaulted at Week-4 controller-integration time "
+          "axes without a value here should NOT be silently defaulted at controller-integration time "
           "-- see status='insufficient_val_data' entries in the JSON report.")
     print("=" * 70)
 

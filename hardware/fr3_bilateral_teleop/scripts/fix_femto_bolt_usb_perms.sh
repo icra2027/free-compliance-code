@@ -7,7 +7,7 @@
 #     opens but read()s fail, or open() itself is denied -- fixed by chmod'ing the matching
 #     /dev/video* node(s); these are usually group `video`, mode 660, and the recording user is
 #     not necessarily in that group in this container.
-# See compliance-vla/tasks.md Day 2/6: the Femto Bolt has been observed to drop off the
+# The Femto Bolt has been observed to drop off the
 # USB bus and re-enumerate to a different node repeatedly within a single session, so this looks
 # it up by vendor ID (Orbbec = 2bc5) each run rather than assuming a fixed bus/device number or
 # video index.
@@ -20,8 +20,8 @@
 #     -p scene_cv2_device_path:=/dev/videoN   # see below for how to pick N
 #
 # If the device keeps re-enumerating every few seconds even right after this script runs, that is
-# NOT a permissions problem -- it is the separate, harder USB3 connection-stability issue Day 2
-# documented (try a different port, a shorter/rated-USB3 cable, or a powered hub).
+# NOT a permissions problem -- it is the separate, harder USB3 connection-stability issue observed
+# earlier (try a different port, a shorter/rated-USB3 cable, or a powered hub).
 set -euo pipefail
 
 ORBBEC_VENDOR_ID="2bc5"

@@ -1,9 +1,9 @@
 """Figure 3 (partial): identifiability mask coverage, dataset-wide.
 
-Real data, from reports/mask_coverage.csv (Day 10 extraction run over the full
+Real data, from reports/mask_coverage.csv (the extraction run over the full
 92-episode T1 dataset, demo1/demo3/demo4). No fabricated numbers.
 
-NOTE -- this is only the mask-coverage half of proposal Figure 3. The other half
+NOTE -- this is only the mask-coverage half of Figure 3. The other half
 ("extracted stiffness traces with phase annotation") needs real per-timestep
 K(t)/phase data, which is not present in this environment (no raw LeRobot
 dataset or per-timestep extraction output here, only the aggregated per-episode
@@ -68,7 +68,7 @@ handles = [
     plt.Rectangle((0, 0), 1, 1, color=AQUA, label="overall"),
     plt.Rectangle((0, 0), 1, 1, color=BLUE, label="normally"),
     plt.Rectangle((0, 0), 1, 1, color=ORANGE, label="firmly"),
-    Line2D([0], [0], color=MUTED, linestyle=":", linewidth=1.4, label="Gate 1 threshold (25%)"),
+    Line2D([0], [0], color=MUTED, linestyle=":", linewidth=1.4, label="identifiability threshold (25%)"),
 ]
 ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.18),
           fontsize=7.5, frameon=False, ncol=4)

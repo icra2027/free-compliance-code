@@ -3,17 +3,17 @@
 
 Offline, no ROS dependency (numpy + csv/yaml only -- neither torch nor sklearn are installed
 in this environment, so this implements its own small kernel-ridge regressor rather than
-pulling in a new dependency for what is, per the proposal §4.1b step 3, meant to be a
+pulling in a new dependency for what is meant to be a
 half-a-day model). Input is one or more CSVs produced by collect_free_space_sweep.py.
 
 Model: random-Fourier-feature (RFF) ridge regression per wrench axis. RFF ridge regression is
 the finite-dimensional Monte-Carlo approximation of kernel ridge regression with an RBF kernel
 -- i.e. an approximate GP posterior mean without needing a GP library -- which is one of the
-two model classes the proposal names ("small MLP or GP"). Closed-form ridge solve, no
+two model classes considered ("small MLP or GP"). Closed-form ridge solve, no
 iterative training loop, no autodiff.
 
 Splits are by SESSION (speed_factor pass), never by row, matching this project's
-session-level-split convention elsewhere (dataset builder, Day 10) -- consecutive rows within
+session-level-split convention elsewhere (dataset builder) -- consecutive rows within
 a session are highly correlated (same slow point-to-point motion), so a row-level split would
 leak and overstate accuracy.
 
@@ -172,7 +172,7 @@ def synthetic_dataset(n_sessions: int = 6, n_per_session: int = 800, seed: int =
     """Generates data with a known smooth f_bias(q, q̇) plus noise, entirely offline -- lets
     the fit/validation pipeline (session split, RFF ridge, error reporting) be checked without
     any hardware or logged CSV, the same "verify the pipeline against synthetic data before the
-    real run" approach used for the Day 18 analysis scripts.
+    real run" approach used for the offline analysis scripts.
 
     Deliberately additive/low-order in each joint (a handful of single-joint sin/cos terms for
     the gravity-model-residual part, linear single-joint terms for the velocity/friction part)
@@ -208,7 +208,7 @@ def synthetic_dataset(n_sessions: int = 6, n_per_session: int = 800, seed: int =
 
 
 def run_self_test(args: argparse.Namespace) -> int:
-    """Pass bar: mean improvement ratio >= 2x (matches the proposal's own §4.1b target for the
+    """Pass bar: mean improvement ratio >= 2x (the target for the
     fit overall) AND no single axis regresses below baseline. Not a uniform "every axis beats
     baseline by 1.5x" bar -- the synthetic axes deliberately span a range of signal-to-noise
     ratios (as real wrench axes will too, e.g. lateral/rotational channels near sigma_f per

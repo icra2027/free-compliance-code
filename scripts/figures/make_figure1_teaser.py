@@ -2,7 +2,7 @@
 extended to bridge into the paper's headline VLA finding.
 
 Pure illustration, no experimental data required -- draws the two-unknowns
-argument from proposal Sec. 2.2(b)/4.1 directly: f = K * e has one equation and
+identifiability argument directly: f = K * e has one equation and
 two unknowns (K, e = x_eq - x_f) per axis. Left panel: pose-only teleop observes
 a single force f* and cannot separate K from e (every point on the e=f*/K curve
 is equally consistent). Middle panel: bilateral teleop additionally measures e
@@ -15,7 +15,7 @@ identifiability argument only): a schematic bridging identifiable labels to
 the downstream policy result -- B0 (standard VLA, position-only, fixed
 stiffness) vs. B5 (ours, + compliance head, predicts K(t)). Deliberately
 qualitative (an ordinal "B5 > B0" arrow, not a bar chart with invented
-heights): GATE 3 (B5 >= B0, in-distribution T1 pilot) is a real, confirmed
+heights): the in-distribution T1 pilot (B5 >= B0) is a real, confirmed
 result, but the full E1 evaluation numbers are not finalized yet, and a bar
 chart with specific heights would assert a magnitude nothing here actually
 measures. Do not add numbers to this panel until the real E1 table exists --
@@ -120,7 +120,7 @@ ax.add_patch(arrow)
 ax.text(5.55, 4.9, "outperforms\non real-robot\nrollouts", ha="left", va="center",
         fontsize=7.6, color=BLUE, fontweight="bold", zorder=4)
 
-ax.text(5.0, 0.35, "in-distribution pilot, GATE 3 (B5 $\\geq$ B0);\n"
+ax.text(5.0, 0.35, "in-distribution pilot (B5 $\\geq$ B0);\n"
                     "[final $n$ / CI pending full E1 evaluation]",
         ha="center", va="center", fontsize=6.6, color=MUTED,
         style="italic", zorder=4)

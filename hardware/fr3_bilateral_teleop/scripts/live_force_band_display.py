@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Live contact-force gauge with adverb target bands, for the operator during T1 data collection.
 
-Day 6 task (compliance-vla/tasks.md): "Stand up the live normal-force display with
-target bands (gently 3-6 N, normally 8-12 N, firmly 15-22 N). The policy never sees these
-numbers." This script is deliberately a separate, standalone process from
+A live normal-force display with target bands (gently 3-6 N, normally 8-12 N, firmly
+15-22 N). The policy never sees these numbers. This script is deliberately a separate, standalone process from
 data_recorder's `record_lerobot` node -- it never touches the LeRobot dataset, never
 writes a frame, and has no coupling to recording state. That separation is what makes "the
 policy never sees these numbers" true by construction rather than by convention.
 
 What it actually displays: the magnitude of the follower's estimated external force
-(||(fx, fy, fz)||), not a true board-normal force. Proposal §4.1 fits the real per-axis contact
+(||(fx, fy, fz)||), not a true board-normal force. The extraction fits the real per-axis contact
 frame (board normal vs. in-plane) offline, from the demo's own in-contact positions
 (extract_impedance_labels.py::fit_contact_frame) -- that fit needs a completed demo and is not
 available live. For a live operator gauge this is an acceptable approximation, not a shortcut
-being smuggled past the reader: Day 5's pilot demos already measured a contact-frame anisotropy
+being smuggled past the reader: the pilot demos already measured a contact-frame anisotropy
 ratio of 7-14x (normal stiffness/force dominates lateral by an order of magnitude) once contact
 is firm, so during genuine wiping contact the force magnitude is, to first order, the normal
 force. Treat this display as operator feedback only; the extraction pipeline's own offline
@@ -34,7 +33,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from geometry_msgs.msg import WrenchStamped
 
-# (low_n, high_n, BGR color) -- matches proposal §5 / tasks.md Day 6 exactly.
+# (low_n, high_n, BGR color) -- the target force bands for each manner word.
 BANDS = {
     "gently": (3.0, 6.0, (110, 220, 110)),
     "normally": (8.0, 12.0, (60, 210, 240)),

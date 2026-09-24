@@ -110,7 +110,7 @@ private:
   /** @brief Subscription for variable stiffness messages */
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr stiffness_sub_;
 
-  /** @brief Proposal §4.3 commanded-vs-realized-stiffness diagnostics. Independent of
+  /** @brief Commanded-vs-realized-stiffness diagnostics. Independent of
    * ROS2 Control Introspection (HAS_ROS2_CONTROL_INTROSPECTION, registered separately above
    * when available) -- these are always-on plain topics, since introspection needs
    * ros2_control >= 4.27.0 and is compiled out on e.g. Humble's stock hardware_interface. */
@@ -133,7 +133,7 @@ private:
   void setStiffnessAndDamping();
 
   /**
-   * @brief Applies log-space rate limiting + energy-tank passivity gating (proposal §4.3) to
+   * @brief Applies log-space rate limiting + energy-tank passivity gating to
    * stiffness_target_diagonal_, producing stiffness_applied_diagonal_, and writes the result
    * into `stiffness`/`damping`. Must be called after `error` and `J` are both up to date for
    * this cycle (needs `error` for the tank's withdrawal-amount calculation and `xdot_task`
@@ -224,7 +224,7 @@ private:
    * set by setStiffnessAndDamping() from either topic_stiffness_ or the static task.k_* params. */
   Eigen::Matrix<double, 6, 1> stiffness_target_diagonal_ = Eigen::Matrix<double, 6, 1>::Zero();
   /** @brief Stiffness actually in force this cycle, after log-space rate limiting + the
-   * energy tank (proposal §4.3) -- what `stiffness`'s diagonal is set to, and the "realized"
+   * energy tank -- what `stiffness`'s diagonal is set to, and the "realized"
    * half of the commanded-vs-realized-stiffness validation figure. Also this energy tank's
    * bookkeeping reference for the next cycle's withdrawals (see applyStiffnessShaping()). */
   Eigen::Matrix<double, 6, 1> stiffness_applied_diagonal_ = Eigen::Matrix<double, 6, 1>::Zero();
@@ -234,9 +234,9 @@ private:
   Eigen::Matrix<double, 6, 1> damping_override_diagonal_ = Eigen::Matrix<double, 6, 1>::Constant(-1.0);
 
   /** @brief Log-space rate limiter for stiffness_target_diagonal_ -> stiffness_applied_diagonal_
-   * (proposal §4.3, |d(log k)/dt| <= gamma). See stiffness_shaping.gamma. */
+   * (|d(log k)/dt| <= gamma). See stiffness_shaping.gamma. */
   std::unique_ptr<LogSpaceStiffnessRateLimiter> stiffness_rate_limiter_;
-  /** @brief Passivity guard on cumulative stiffness INCREASES (proposal §4.3). Reset to
+  /** @brief Passivity guard on cumulative stiffness INCREASES. Reset to
    * stiffness_shaping.energy_tank.e0 on every on_activate(). See stiffness_shaping.energy_tank. */
   std::unique_ptr<EnergyTank> energy_tank_;
   /** @brief Snapshot of energy_tank_->energy(), refreshed every applyStiffnessShaping() call.

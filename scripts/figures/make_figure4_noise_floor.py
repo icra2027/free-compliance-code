@@ -1,9 +1,9 @@
 """Figure 4: per-axis sensorless wrench noise floor (sigma_f).
 
-Real data, from reports/noise_floor_sigma_f.json (Day 4, 11 Aug 2026 real-hardware
-session: fit_residual_bias.py against Day 3's 332,626-sample free-space sweep).
+Real data, from reports/noise_floor_sigma_f.json (11 Aug 2026 real-hardware
+session: fit_residual_bias.py against the 332,626-sample free-space sweep).
 This is a single real point estimate per axis (min of raw vs. bias-corrected RMS,
-per tasks.md), not a raw-sample distribution -- no per-sample residual CSV exists
+as recorded in that JSON), not a raw-sample distribution -- no per-sample residual CSV exists
 in this environment to draw a true distribution from, so a per-axis bar (with the
 raw-vs-bias-corrected provenance marked) is what's honestly plottable, not a
 violin/box plot. Do not fabricate spread that isn't in the source data.
@@ -11,7 +11,7 @@ violin/box plot. Do not fabricate spread that isn't in the source data.
 Caveat carried into the caption: this is a free-space noise floor, not an
 independently-verified hanging-mass ground-truth calibration -- that check was
 attempted twice on 11 Aug and is still open (see reports/noise_floor_sigma_f.json,
-_caveat field, and tasks.md Day 4).
+_caveat field).
 """
 import json
 

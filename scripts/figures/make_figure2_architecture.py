@@ -1,7 +1,7 @@
 """Figure 2: hardware rig + policy architecture diagram.
 
 Pure illustration, no experimental data required -- every element here is a
-fixed design choice already committed in the proposal (Sec. 4.2/4.3) and the
+fixed design choice of the method and the
 real implementation (src/compliance_vla/policy/compliance_policy.py, src/compliance_vla/policy/force_encoder.py).
 Nothing here is a placeholder.
 """

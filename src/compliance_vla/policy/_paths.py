@@ -1,9 +1,9 @@
 """Locates the release's sibling directories from inside the installed package.
 
 The policy code loads a few things that are not Python modules of this package:
-the research/analysis helpers under ``scripts/``, the label extraction under
-``hardware/fr3_bilateral_teleop/dataset_tools/labeling/``, and calibration artifacts such
-as ``scripts/tool_offset.npy``. In the original working repository those sat at
+the dataset readers and extraction drivers under ``data_extraction/``, the label
+extraction under ``hardware/fr3_bilateral_teleop/dataset_tools/labeling/``, and
+calibration artifacts such as ``data_extraction/tool_offset.npy``. In the original working repository those sat at
 fixed relative offsets from the training code, and each module recomputed them
 with its own ``os.path.dirname`` chain.
 
@@ -24,7 +24,7 @@ from pathlib import Path
 
 __all__ = [
     "RELEASE_ROOT",
-    "SCRIPTS_DIR",
+    "DATA_EXTRACTION_DIR",
     "EXTERNAL_SCRIPTS",
     "REPORTS_DIR",
     "ensure_on_sys_path",
@@ -41,7 +41,7 @@ def _find_release_root() -> Path:
 
 
 RELEASE_ROOT = _find_release_root()
-SCRIPTS_DIR = RELEASE_ROOT / "scripts"
+DATA_EXTRACTION_DIR = RELEASE_ROOT / "data_extraction"
 # Where extract_impedance_labels.py lives. The name predates the move into dataset_tools/
 # and is kept because compliance_vla.policy.labels re-exports it.
 EXTERNAL_SCRIPTS = RELEASE_ROOT / "hardware" / "fr3_bilateral_teleop" / "dataset_tools" / "labeling"
@@ -50,7 +50,7 @@ REPORTS_DIR = RELEASE_ROOT / "reports"
 
 def require_release_tree() -> None:
     """Raises with an actionable message if the sibling directories are absent."""
-    missing = [str(p) for p in (SCRIPTS_DIR, EXTERNAL_SCRIPTS) if not p.is_dir()]
+    missing = [str(p) for p in (DATA_EXTRACTION_DIR, EXTERNAL_SCRIPTS) if not p.is_dir()]
     if missing:
         raise RuntimeError(
             "compliance_vla.policy needs the release tree's sibling directories, but "
@@ -61,7 +61,7 @@ def require_release_tree() -> None:
 
 
 def ensure_on_sys_path() -> None:
-    """Puts scripts/ and the label-extraction directory on sys.path, nearest-first.
+    """Puts data_extraction/ and the label-extraction directory on sys.path, nearest-first.
 
     The modules imported from there (dataset_io, panda_fk, extract_impedance_labels,
     run_extraction_on_dataset) are plain scripts rather than an installed package,
@@ -69,7 +69,7 @@ def ensure_on_sys_path() -> None:
     standalone on the rig.
     """
     require_release_tree()
-    for path in (EXTERNAL_SCRIPTS, SCRIPTS_DIR):
+    for path in (EXTERNAL_SCRIPTS, DATA_EXTRACTION_DIR):
         entry = str(path)
         if entry not in sys.path:
             sys.path.insert(0, entry)

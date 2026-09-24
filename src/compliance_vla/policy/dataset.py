@@ -1,5 +1,5 @@
-"""Day 11: torch Dataset bridging the on-disk franka_vla_multimodal LeRobot
-sessions (dataset/demo{1,3,4}, see scripts/dataset_io.py) + the §4.1
+"""Torch Dataset bridging the on-disk franka_vla_multimodal LeRobot
+sessions (dataset/demo{1,3,4}, see data_extraction/dataset_io.py) + the §4.1
 extraction labels (src/compliance_vla/policy/labels.py) into batches shaped exactly the way
 compliance_vla.policy.compliance_policy.ComplianceSmolVLAPolicy.forward expects.
 
@@ -12,10 +12,9 @@ One training example = one 30Hz anchor timestep inside one episode:
 
 Deliberately eager per-session loading (image columns included), not a
 lazy/streaming reader: this dataset is 3 sessions / ~92 episodes / ~3.8GB
-including images (Day 10 note), and Day 11's job is a training *smoke test*
-(scripts/train_b5.py --smoke-test), not a throughput-tuned full-scale
-dataloader -- that belongs with Day 12's real 3-seeds-per-policy runs, if the
-smoke test shows this approach needs it.
+including images, and fits in memory for the 3-seeds-per-policy training runs;
+a throughput-tuned streaming dataloader would only be worth it at a larger
+scale.
 """
 
 
@@ -23,16 +22,14 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from ._paths import SCRIPTS_DIR as _SCRIPTS_DIR  # noqa: E402
 from ._paths import ensure_on_sys_path  # noqa: E402
 
 # dataset_io and diagnose_language_grounding are standalone scripts, not
 # installed packages, so sys.path has to be prepared before importing them.
 ensure_on_sys_path()
-SCRIPTS_DIR = str(_SCRIPTS_DIR)
 
 import dataset_io as dio  # noqa: E402
-from diagnose_language_grounding import _load_manifest_ordered  # noqa: E402
+from .diagnose_language_grounding import _load_manifest_ordered  # noqa: E402
 
 from . import labels as lb  # noqa: E402
 from .force_encoder import resample_to_n_samples  # noqa: E402
@@ -133,7 +130,7 @@ class ComplianceWindowDataset(Dataset):
         dataset/demo{1,3,4} names need no changes.
 
         apply_manner_calibration: applies compliance_vla.policy.labels.calibrate_log_k's per-operator
-        affine correction (fit by scripts/fit_manner_force_calibration.py) to each episode's
+        affine correction (fit by src/compliance_vla/policy/fit_manner_force_calibration.py) to each episode's
         log_k target, using that episode's own operator_id/manner from session_manifest.jsonl
         (looked up via _load_manifest_ordered's position-in-timestamp-order mapping -- the
         manifest's own raw episode_index field is a different, gappy numbering space, see
@@ -261,7 +258,7 @@ def _to_chw_float(img_hwc_uint8):
 
 
 # Column indices into the dataset's native 13-dim action ([x_eq(6), log_k(6), gripper(1)])
-# selecting just [x_eq(6), gripper(1)] = 7 dims, for the B0/B2 position-only baselines (Day 12).
+# selecting just [x_eq(6), gripper(1)] = 7 dims, for the B0/B2 position-only baselines.
 POSITION_ONLY_COLUMNS = [0, 1, 2, 3, 4, 5, 12]
 
 
@@ -272,7 +269,7 @@ def make_collate_fn(tokenizer, tokenizer_max_length=48, pad_language_to="longest
 
     action_layout:
       - "full13" (default, B5): action stays [x_eq(6), log_k(6), gripper(1)].
-      - "position7" (B0/B2, Day 12): action reduced to [x_eq(6), gripper(1)]
+      - "position7" (B0/B2): action reduced to [x_eq(6), gripper(1)]
         via POSITION_ONLY_COLUMNS -- log_k_mask is still included in the
         batch (harmless, B0/B2's policy classes never read it) rather than
         conditionally omitted, keeping this one collate path simple.

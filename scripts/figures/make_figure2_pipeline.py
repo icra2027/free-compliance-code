@@ -1,11 +1,11 @@
-"""Figure 2: end-to-end labeling pipeline (Fallback A).
+"""Figure 2: end-to-end labeling pipeline.
 
 Pure illustration, no experimental data required -- every stage here is a
 fixed design choice already committed in methodology.tex (Secs.
 4.3/4.4/4.5): bilateral rig -> sensorless wrench estimation (payload ID ->
 re-zero -> bias model) -> extraction (windowed regression + identifiability
 mask) -> labeled dataset. Replaces the old two-panel rig+policy figure
-(make_figure2_architecture.py) now that Fallback A drops the policy panel.
+(make_figure2_architecture.py), dropping the policy panel.
 """
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adverb -> force separation check -- proposal §5 pre-registration item, tasks.md Day 7.
+"""Adverb -> force separation check (a pre-registration item).
 
 Computes Cohen's d / d' between the per-manner contact-force distributions of a LeRobot-format
 dataset produced by data_recorder (e.g. dataset_collection/19082601), to check
@@ -114,7 +114,7 @@ def per_episode_contact_force(
 def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     """Standardized mean difference (mean(a) - mean(b)) / pooled_sd.
 
-    Reported as both "Cohen's d" and "d'" per tasks.md's wording -- for two approximately
+    Reported as both "Cohen's d" and "d'" -- for two approximately
     Gaussian force distributions these are the same computation (d' from signal-detection
     theory is exactly this quantity when both distributions share a common sigma estimate);
     no separate d' formula is used.

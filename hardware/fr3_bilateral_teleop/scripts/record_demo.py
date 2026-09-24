@@ -2,7 +2,7 @@
 """Record one bilateral teleoperation demonstration to CSV for offline impedance extraction.
 
 Logs leader pose x_l(t), follower pose x_f(t), and the follower's estimated external
-wrench f(t) -- exactly the three signals proposal §4.1's extraction regression needs
+wrench f(t) -- exactly the three signals the extraction regression needs
 (`e(t) = x_l(t) ⊖ x_f(t)`, regressed against `f(t)`). No existing demo-recording
 infrastructure was in this repo before this script (checked: no rosbag2 record launch
 files, no LeRobot dataset builder, nothing) -- this is deliberately a minimal, CSV-based
@@ -134,7 +134,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--manner", default="", help="e.g. gently/normally/firmly, optional")
     parser.add_argument(
         "--duration", type=float, default=25.0,
-        help="seconds, per the proposal's ~25s/demo data budget")
+        help="seconds, per the ~25s/demo data budget")
     parser.add_argument(
         "--pair-tolerance", type=float, default=0.02,
         help="max pose/wrench timestamp skew accepted, seconds")

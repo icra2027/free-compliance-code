@@ -29,9 +29,9 @@ using Matrix7d = Eigen::Matrix<double, 7, 7>;
 using Matrix6x7d = Eigen::Matrix<double, 6, 7>;
 
 // Pure, standalone Cartesian-impedance math. NOT wired into a controller in this package --
-// the proposal's §4.3 variable-impedance Cartesian controller is implemented by patching
+// the variable-impedance Cartesian controller is implemented by patching
 // the sibling `variable_impedance_controllers` package (see ../../variable_impedance_controllers/, and
-// tasks.md/README for the decision record) rather than by a from-scratch controller here,
+// README for the decision record) rather than by a from-scratch controller here,
 // since variable_impedance_controllers already provides a mature, FR3-validated Cartesian
 // impedance/OSC engine built specifically for VLA policy deployment. This header (and its
 // test, test_cartesian_impedance_math.cpp) is kept as an independent cross-check: a second,
@@ -46,8 +46,8 @@ using Matrix6x7d = Eigen::Matrix<double, 6, 7>;
 // EMA/torque-rate-saturation smoothing does not provide).
 
 // Six-dimensional pose error e = x_d ⊖ x, in the SAME convention as the extraction
-// pipeline's e(t) = x_l(t) ⊖ x_f(t) (proposal §4.1) and the controller law
-// f = K·e + D·ė (proposal §4.3): positive e means the desired/equilibrium pose is
+// pipeline's e(t) = x_l(t) ⊖ x_f(t) and the controller law
+// f = K·e + D·ė: positive e means the desired/equilibrium pose is
 // AHEAD of the current one, so F = K·e is a restoring force/torque toward x_d.
 //
 // Translation: plain vector difference (p_d - p), expressed in the base frame -- accurate
@@ -108,8 +108,8 @@ inline Matrix7d dynamicallyConsistentNullspaceProjector(
   return Matrix7d::Identity() - mass_inv * jacobian.transpose() * lambda * jacobian;
 }
 
-// Per-axis critical(-ish) damping D_i = 2*zeta*sqrt(k_i * m_i) (proposal §4.2). `zeta` is
-// expected in the proposal's [0.7, 1.0] range but is not clamped here -- that policy
+// Per-axis critical(-ish) damping D_i = 2*zeta*sqrt(k_i * m_i). `zeta` is
+// expected in the [0.7, 1.0] range but is not clamped here -- that policy
 // decision belongs to the caller (see the controller's `damping_ratio` parameter).
 inline Vector6d criticalDamping(
   const Vector6d & stiffness, const Vector6d & task_space_mass_diag, double zeta)

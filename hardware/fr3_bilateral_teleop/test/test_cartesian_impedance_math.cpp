@@ -50,8 +50,8 @@ TEST(PoseError6dTest, RestoringSenseMatchesDesiredMinusCurrent)
   // Desired is a small positive rotation about Z ahead of current: a restoring torque
   // F = K * error should point toward increasing z-rotation, i.e. error.z() > 0. This is
   // the same "desired ahead of current => positive error" convention the extraction
-  // pipeline uses for e(t) = x_l(t) ⊖ x_f(t) (proposal §4.1) and the controller law
-  // f = K·e (proposal §4.3).
+  // pipeline uses for e(t) = x_l(t) ⊖ x_f(t) and the controller law
+  // f = K·e.
   const Eigen::Vector3d p = Eigen::Vector3d::Zero();
   const Eigen::Quaterniond q_cur = Eigen::Quaterniond::Identity();
   const Eigen::Quaterniond q_des(Eigen::AngleAxisd(0.05, Eigen::Vector3d::UnitZ()));

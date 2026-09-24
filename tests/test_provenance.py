@@ -56,7 +56,7 @@ PROVENANCE = {
         ],
     ),
     PACKAGE / "frames.py": (
-        Path("scripts/controller_frame_utils.py"),
+        PACKAGE / "policy" / "controller_frame_utils.py",
         ["rotate_diag_stiffness_to_base", "chunk_step_index"],
     ),
 }

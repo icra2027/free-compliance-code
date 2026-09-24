@@ -1,4 +1,4 @@
-# Joint-space waypoints for collect_free_space_sweep.py (Day 3, residual bias model).
+# Joint-space waypoints for collect_free_space_sweep.py (residual bias model).
 #
 # Goal is different from payload_calibration_waypoints.yaml: that set only needs to vary the
 # flange's orientation relative to gravity (small excursions on the wrist joints). This set
@@ -25,7 +25,7 @@
 # waypoint at low speed via Desk at least once before running collect_free_space_sweep.py
 # unattended, and confirm the T1/T2 fixtures (board, panel) are either not yet mounted or are
 # clear of this envelope -- this is a free-space characterization sweep and must never contact
-# anything. Re-verify clearance whenever the fixture layout changes (Day 6 freeze).
+# anything. Re-verify clearance whenever the fixture layout changes.
 waypoints:
   - [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # base pose
   - [0.6, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]   # joint1 +

@@ -19,7 +19,7 @@
 namespace fr3_bilateral_teleop
 {
 
-// Standard passivity-via-energy-tank bookkeeping (proposal §4.3): a scalar reservoir that
+// Standard passivity-via-energy-tank bookkeeping: a scalar reservoir that
 // starts at E0, accumulates energy the controller dissipates (damping doing negative work on
 // the arm), and is drawn down by anything that could inject energy (a commanded stiffness
 // INCREASE, since raising K while displaced adds potential energy to the interaction). When
@@ -29,9 +29,9 @@ namespace fr3_bilateral_teleop
 // indefinitely; it complements (does not replace) LogSpaceStiffnessRateLimiter, which bounds
 // how FAST K can move but not, on its own, whether the cumulative moves stay passive.
 //
-// Standalone, unit-tested building block -- like stiffness_rate_limiter.hpp, not yet wired
-// into a running controller as of Day 3 (the variable-impedance Cartesian controller itself
-// doesn't exist yet; see fr3_bilateral_teleop/README.md and tasks.md Day 3 for status).
+// Standalone, unit-tested building block -- like stiffness_rate_limiter.hpp, not wired into
+// a running controller in this package; the variable-impedance Cartesian controller that uses
+// this mechanism lives in variable_impedance_controllers (see fr3_bilateral_teleop/README.md).
 class EnergyTank
 {
 public:

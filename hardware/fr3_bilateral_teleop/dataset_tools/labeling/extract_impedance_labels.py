@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Impedance label extraction from a recorded bilateral demonstration -- proposal §4.1.
+"""Impedance label extraction from a recorded bilateral demonstration.
 
 Offline, no ROS dependency (record_demo.py produces the input CSV; this reads it back).
 Turns `x_l(t)` (leader pose), `x_f(t)` (follower pose), `f(t)` (follower estimated wrench)
 into per-axis, per-timestep stiffness labels `K(t)` with an identifiability mask, in the
 task/contact frame.
 
-Design decisions, and why, since none of this existed before today:
+Design decisions, and why:
 
-**Contact frame, fit from the demo data itself, not a separate calibration.** The proposal
-says "z along the calibrated board normal" for wiping. Rather than adding a new dedicated
-board-touch calibration step (which would mean more real-hardware motion on a day that
-already had a safety near-miss -- see tasks.md Day 4), this fits the plane directly from the
+**Contact frame, fit from the demo data itself, not a separate calibration.** The method
+puts z along the calibrated board normal for wiping. Rather than adding a new dedicated
+board-touch calibration step (which would mean more real-hardware motion, and an earlier
+session had already had a safety near-miss), this fits the plane directly from the
 follower's own position samples during genuine contact (`||f|| > --contact-force-threshold`):
 those positions should lie approximately on the 2D board surface, so the direction of least
 variance (smallest SVD singular vector) IS the board normal. Zero extra robot motion; reuses
@@ -20,36 +20,35 @@ data already being collected for the demo itself. Gated on a planarity quality c
 "quality gate, don't silently trust" pattern (calibrate_payload.py, fit_residual_bias.py).
 
 **Output at 30 Hz, not 1 kHz.** The raw signals are ~1 kHz, but the label this ultimately
-supervises is the policy's `log k` output head at the action-chunk rate (proposal §4.2: 30 Hz,
+supervises is the policy's `log k` output head at the action-chunk rate (30 Hz,
 H=32). Computing a windowed regression at 1 kHz would be ~33x more work for no signal the
 policy ever sees. Each 30 Hz output timestep uses a TRAILING 300 ms window of the raw 1 kHz
-data (proposal §4.1's window length), i.e. causal, not centered.
+data (the method's window length), i.e. causal, not centered.
 
 **Regression solved via `scipy.optimize.least_squares` with bounds**, not a hand-rolled
-solver -- the proposal's `min_{k_i,d_i} ... + lambda*||log k_i - log k_i^prior||^2` is
+solver -- the objective `min_{k_i,d_i} ... + lambda*||log k_i - log k_i^prior||^2` is
 nonlinear in `log k_i` (the regularizer) even though it's linear in `(k_i, d_i)` without it,
 so this is a genuine bounded nonlinear least-squares problem, not something with a closed
 form. `scipy` (already a dependency elsewhere in this environment) gets a well-tested
 trust-region-reflective solver instead of a hand-rolled Gauss-Newton loop.
 
 **Mask conditions (1)/(4) are window properties (excitation, sustained contact); (2)/(3) are
-instantaneous** (the proposal's own wording: "|e_i| above the pose-error noise floor" reads as
+instantaneous** (the method's wording, "|e_i| above the pose-error noise floor", reads as
 a per-timestep magnitude check, not a windowed one) -- evaluated at the single raw sample
 nearest each 30 Hz output timestep.
 
-**Damping is fit freely per window** (proposal: "Fit d_i freely only for the offline analysis
-figure to show the critical-damping assumption is reasonable" -- exactly what today's Day 5
+**Damping is fit freely per window** (d_i is fit freely only for the offline analysis
+figure that shows the critical-damping assumption is reasonable -- exactly what the
 pilot analysis needs). The POLICY-TARGET constrained damping `D = 2*zeta*sqrt(K*Mhat)` needs a
 Cartesian effective-mass estimate (`Mhat`) from the arm's joint-space mass matrix and Jacobian,
 which this demo-CSV pipeline does not have (would need q + the payload_model_broadcaster
-snapshot recorded alongside every demo, not just x_l/x_f/f) -- deliberately deferred to Week 3
-training prep rather than built today under time pressure for a Day 5 decision that doesn't
-need it.
+snapshot recorded alongside every demo, not just x_l/x_f/f) -- deliberately deferred to training
+prep, since the pilot analysis doesn't need it.
 
-**sigma_f defaults to today's real measured values** (tasks.md Day 4, free-space-residual
+**sigma_f defaults to the real measured values** (free-space-residual
 substitute: fx=0.726 fy=0.418 fz=0.461 N, tx=0.275 ty=0.434 tz=0.155 Nm) -- override
 --sigma-f if re-measured later. sigma_e (pose-error noise floor) is NOT a measured quantity
-here -- the proposal states encoder-measured pose error is accurate to ~0.01mm, so a small
+here -- encoder-measured pose error is accurate to ~0.01mm, so a small
 fixed constant is used per axis TYPE (translational vs rotational), not fit from data.
 
 Usage:
@@ -76,16 +75,16 @@ FORCE_AXIS_NAMES = ["fx", "fy", "fz", "tx", "ty", "tz"]
 TRANSLATIONAL_AXES = [0, 1, 2]
 ROTATIONAL_AXES = [3, 4, 5]
 
-# Proposal §4.1: "Bound [k_min, k_max] to the controller's realizable range (e.g. 50-1500 N/m
-# translational, 5-100 N*m/rad rotational)".
+# Bound [k_min, k_max] to the controller's realizable range (50-1500 N/m
+# translational, 5-100 N*m/rad rotational).
 K_MIN = np.array([50.0, 50.0, 50.0, 5.0, 5.0, 5.0])
 K_MAX = np.array([1500.0, 1500.0, 1500.0, 100.0, 100.0, 100.0])
 
-# tasks.md Day 4: real, measured (via the free-space-residual substitute, since the
+# Real, measured (via the free-space-residual substitute, since the
 # ground-truth hanging-mass check was not safely completable that session).
 DEFAULT_SIGMA_F = np.array([0.726, 0.418, 0.461, 0.275, 0.434, 0.155])
 
-# Not measured -- proposal §4.1b: "Encoder-measured pose error is accurate to ~0.01 mm".
+# Not measured -- encoder-measured pose error is accurate to ~0.01 mm.
 # Rotational floor is an assumed order-of-magnitude default, not a measured quantity.
 DEFAULT_SIGMA_E = np.array([1e-5, 1e-5, 1e-5, 1e-4, 1e-4, 1e-4])
 
@@ -186,7 +185,7 @@ def fit_contact_frame(
 
     `contact_force_threshold` here is deliberately a HIGHER, firmer threshold than the
     mask's general sustained-contact condition (args.contact_force_threshold, ~2N) -- real
-    Day 5 pilot data showed light/transitional contact near the mask's lower threshold
+    pilot data showed light/transitional contact near the mask's lower threshold
     (approach, retreat, grazing touches) is genuinely NOT planar (planarity_ratio 0.15-0.24
     at 2N on 4/5 real pilots), while firm, confident contact (>~6-8N) is (0.007-0.13 on the
     same demos at 8N) -- a real geometric distinction, not a bug: a light graze's contact
@@ -282,7 +281,7 @@ def rotate_force_to_contact_frame(
 
 
 # ---------------------------------------------------------------------------
-# Windowed, log-space, box-constrained regression (proposal §4.1)
+# Windowed, log-space, box-constrained regression
 # ---------------------------------------------------------------------------
 
 def _fit_one_window(
@@ -343,7 +342,7 @@ def nearest_sample_indices(t: np.ndarray, output_times: np.ndarray) -> np.ndarra
 
 
 # ---------------------------------------------------------------------------
-# Identifiability mask (proposal §4.1, all four conditions)
+# Identifiability mask (all four conditions)
 # ---------------------------------------------------------------------------
 
 def compute_mask(
@@ -432,7 +431,7 @@ def extract_demo(
 
     mask_coverage = mask.mean(axis=0)
     n_contact_timesteps = int(np.sum(contact_indicator))
-    # Gate 1 (H1) condition (i) is literally "identifiable on >= 25% of CONTACT timesteps" --
+    # H1's identifiability condition (i) is literally "identifiable on >= 25% of CONTACT timesteps" --
     # report coverage restricted to that denominator, not the whole demo (most of which is
     # free-space transit/reset, which would otherwise dilute the number in an uninformative
     # direction).
@@ -614,7 +613,7 @@ def run_self_test(args: argparse.Namespace) -> int:
     print(f"mask coverage per axis (all timesteps): {result['mask_coverage'].tolist()}")
     print(
         f"mask coverage per axis (within contact, {result['n_contact_timesteps']}/"
-        f"{result['n_output_timesteps']} timesteps) -- what Gate 1 (H1)(i) thresholds: "
+        f"{result['n_output_timesteps']} timesteps) -- what H1 condition (i) thresholds: "
         f"{result['mask_coverage_within_contact'].tolist()}")
 
     ok = True
@@ -638,7 +637,7 @@ def run_self_test(args: argparse.Namespace) -> int:
         if cov < 0.25:
             print(
                 f"axis {AXIS_NAMES[axis]}: FAIL -- within-contact coverage {cov:.1%} is "
-                "below Gate 1 (H1)(i)'s 25% threshold on data that should clearly pass it")
+                "below H1 condition (i)'s 25% threshold on data that should clearly pass it")
             ok = False
 
     # Free-space phase must be mostly masked out on every axis -- no real excitation there.
@@ -681,7 +680,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         "--frame-fit-force-threshold", type=float, default=8.0,
         help="N, HIGHER firm-contact threshold used only for fitting the contact plane's "
-             "geometry -- real Day 5 pilot data showed light/transitional contact near the "
+             "geometry -- real pilot data showed light/transitional contact near the "
              "lower --contact-force-threshold is genuinely not planar (see fit_contact_frame "
              "docstring); firm contact is")
     parser.add_argument(
@@ -694,7 +693,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         "--sigma-f", type=float, nargs=6, default=list(DEFAULT_SIGMA_F),
         metavar=("FX", "FY", "FZ", "TX", "TY", "TZ"),
-        help="measured wrench noise floor, N/N/N/Nm/Nm/Nm -- defaults to tasks.md Day 4's "
+        help="measured wrench noise floor, N/N/N/Nm/Nm/Nm -- defaults to the "
              "real measured values")
     parser.add_argument("--no-figure", action="store_true")
     parser.add_argument("--self-test", action="store_true")
@@ -733,7 +732,7 @@ def main() -> int:
               f"{dict(zip(FORCE_AXIS_NAMES, coverage.round(3).tolist()))}")
         print(
             f"mask coverage per axis (within contact, {result['n_contact_timesteps']}/"
-            f"{result['n_output_timesteps']} timesteps) -- Gate 1 (H1)(i) threshold is "
+            f"{result['n_output_timesteps']} timesteps) -- H1 condition (i) threshold is "
             f"25% here: {dict(zip(FORCE_AXIS_NAMES, coverage_contact.round(3).tolist()))}")
 
         stem = path.stem

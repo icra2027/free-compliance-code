@@ -243,7 +243,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--latency-warn-ms", type=float, default=2.0,
-        help="p99 channel latency above this is flagged (proposal's Week 1 sync target: 2ms)"
+        help="p99 channel latency above this is flagged (sync target: 2ms)"
     )
     parser.add_argument("--output-dir", default="bilateral_timing_report")
     return parser.parse_args()
@@ -272,7 +272,7 @@ def main() -> int:
     print(
         "Note: channel latencies are `now - header.stamp` on the consuming robot. They are "
         "only valid if leader and follower clocks are synchronized -- verify that separately "
-        "(target < 2 ms per the proposal's Week 1 gate) before trusting these numbers."
+        "(target < 2 ms) before trusting these numbers."
     )
     print()
 

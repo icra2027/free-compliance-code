@@ -1,13 +1,12 @@
-"""Day 13: B4 -- ACT/Bi-ACT trained from scratch, identical data and output
-space as B5 (proposal §6.1 baseline table): "ACT/Bi-ACT from scratch, same
-bilateral data, same compliance output -- isolates: H4, the pretraining
-contribution." B4 is the control H4 needs: if B5 (pretrained VLM) and B4
+"""B4 -- ACT/Bi-ACT trained from scratch, identical data and output
+space as B5: ACT/Bi-ACT from scratch, same bilateral data, same compliance
+output -- isolates H4, the pretraining contribution. B4 is the control H4 needs: if B5 (pretrained VLM) and B4
 (no pretraining) degrade identically on held-out language cells (E3/E4),
 the vision-language pretraining isn't actually buying anything and H4 is
 falsified.
 
 Reuses lerobot's own ACT implementation (`lerobot.policies.act`, the
-"Bi-ACT" family this proposal cites descends from ACT/ACT+ variants)
+"Bi-ACT" family descends from ACT/ACT+ variants)
 unmodified -- no changes to `modeling_act.py`. Everything below is a thin
 wrapper that:
   1. Turns off ImageNet pretraining on the ResNet vision backbone
@@ -30,8 +29,7 @@ wrapper that:
      conditioning slot for a flat non-image, non-robot-state vector (see
      `env_state_feature` in modeling_act.ACT.forward), chosen over modifying
      ACT's transformer internals to keep this baseline architecturally
-     boring, matching proposal §4.2's "keep the architecture boring on
-     purpose" applied to B4 as much as B5.
+     boring on purpose, for B4 as much as B5.
   4. Outputs the same 13-dim [x_eq(6), log_k(6), gripper(1)] action ACT
      already regresses directly (no flow-matching -- ACT decodes actions in
      one forward pass), and reuses compliance_vla.policy.losses.compliance_loss for the
@@ -45,9 +43,9 @@ Bilateral data: like B2/B5, B4 trains on `observation.state` = (q, q_dot,
 x_f) -- the follower's own joint state and Cartesian pose -- which already
 encodes bilateral-teleop-derived quantities (x_f comes from FK, calibrated
 against the bilateral rig, src/compliance_vla/policy/labels.py); the leader's pose x_l only
-ever appears as the x_eq *target*, for all baselines, per the proposal's
-identifiability argument (§2.2b) -- B4 does not get a separate leader-state
-input channel beyond what B2/B5 already have, since "same data" (§6.1) means
+ever appears as the x_eq *target*, for all baselines, per the method's
+identifiability argument -- B4 does not get a separate leader-state
+input channel beyond what B2/B5 already have, since "same data" means
 matching the input space, not adding new information no other baseline sees.
 """
 
@@ -66,12 +64,12 @@ from .losses import compliance_loss
 
 FORCE_EMBED_DIM = 64
 LANG_EMBED_DIM = 64
-ENV_STATE_DIM = FORCE_EMBED_DIM + LANG_EMBED_DIM  # scripts/train_policy.py's b4 input_features needs this
+ENV_STATE_DIM = FORCE_EMBED_DIM + LANG_EMBED_DIM  # src/compliance_vla/policy/train_policy.py's b4 input_features needs this
 
 
 class FromScratchLanguageEncoder(nn.Module):
-    """Bag-of-embeddings language encoder, trained from scratch (Day 13,
-    B4/H4 control). Mean-pools token embeddings over non-padding positions
+    """Bag-of-embeddings language encoder, trained from scratch (B4/H4
+    control). Mean-pools token embeddings over non-padding positions
     (order-invariant -- deliberately no positional encoding or attention, to
     keep this pathway as architecturally simple as the rest of B4) then
     projects to `out_dim`. The embedding table is Xavier-initialized and has
@@ -99,7 +97,7 @@ class FromScratchLanguageEncoder(nn.Module):
 @PreTrainedConfig.register_subclass("act_compliance")
 @dataclass
 class BiActComplianceConfig(ACTConfig):
-    # H = 32 @ 30Hz, matching B0/B2/B5 (proposal §4.2) -- overrides ACTConfig's Aloha-tuned 100/100 defaults.
+    # H = 32 @ 30Hz, matching B0/B2/B5 -- overrides ACTConfig's Aloha-tuned 100/100 defaults.
     chunk_size: int = 32
     n_action_steps: int = 32
 
@@ -133,7 +131,7 @@ class BiActComplianceConfig(ACTConfig):
 
 class BiActCompliancePolicy(ACTPolicy):
     """B4: lerobot's unmodified ACT model (config.use_vae default True, i.e.
-    genuinely the CVAE-based "ACT" the proposal's "ACT/Bi-ACT" naming refers
+    genuinely the CVAE-based "ACT" that the "ACT/Bi-ACT" naming refers
     to), plus a force-history + from-scratch-language `environment_state`
     input, plus the 13-dim compliance output/loss B2/B5 already use.
     """
@@ -152,7 +150,7 @@ class BiActCompliancePolicy(ACTPolicy):
         self.lang_encoder = FromScratchLanguageEncoder(
             config.lang_vocab_size, embed_dim=config.lang_embed_dim, out_dim=config.lang_embed_dim
         )
-        self.tokenizer = tokenizer  # exposed so scripts/train_policy.py can reuse it for the collate fn, mirrors how b0/b2/b5 expose theirs via policy.model.vlm_with_expert.processor.tokenizer
+        self.tokenizer = tokenizer  # exposed so src/compliance_vla/policy/train_policy.py can reuse it for the collate fn, mirrors how b0/b2/b5 expose theirs via policy.model.vlm_with_expert.processor.tokenizer
 
     def _build_env_state(self, batch):
         force_hist = force_dropout(batch["force_history"], self.config.force_dropout_p, training=self.training)
@@ -199,7 +197,7 @@ class BiActCompliancePolicy(ACTPolicy):
 
     @torch.no_grad()
     def predict_action_chunk(self, batch: dict) -> torch.Tensor:
-        """Inference path (Week 4 evaluation harness) -- same env-state
+        """Inference path (evaluation harness) -- same env-state
         construction as forward(), force/language augmentations are no-ops
         outside self.training per force_encoder's own convention."""
         self.eval()
@@ -215,7 +213,7 @@ def load_tokenizer(name):
 
 
 def build_bi_act_policy(config: BiActComplianceConfig, tokenizer=None):
-    """scripts/train_policy.py's b4 entry point: resolves the real tokenizer
+    """src/compliance_vla/policy/train_policy.py's b4 entry point: resolves the real tokenizer
     vocab size (config.lang_vocab_size starts at the 0 placeholder) before
     constructing the policy, since nn.Embedding needs a fixed vocab size at
     __init__ time."""

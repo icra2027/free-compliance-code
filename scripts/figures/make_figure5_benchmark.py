@@ -1,6 +1,6 @@
-"""Figure 5: offline compliance-prediction benchmark (M8 / Gate 2).
+"""Figure 5: offline compliance-prediction benchmark (M8 / learnability check).
 
-Real data, from reports/offline_stiffness_benchmark_m8.json (Day 10 run,
+Real data, from reports/offline_stiffness_benchmark_m8.json (the M8 run,
 session-level split train=demo4/val=demo1/test=demo3, cross-operator
 held-out test). Per-axis RMSE on log K for all three baselines -- constant,
 nearest-neighbour, and the learned RFF-ridge model. No fabricated numbers;

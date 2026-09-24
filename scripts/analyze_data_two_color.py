@@ -7,15 +7,14 @@ dio.TWO_COLOR_DATASET_ROOT). It only uses red/blue, which is exactly
 diagnose_language_grounding.py's DEFAULT_DESCOPE_REFERENTS -- this batch reads as the
 data-collection half of that 2026-09-01 descope decision. It also varies `manner`
 (gently/normally/firmly), which is a *second* language axis this project already has an
-open, gating question about (H4 in the proposal doc / analyze_cross_operator_adverbs.py's
+open question about (H4 / analyze_cross_operator_adverbs.py's
 Figure 6 on the old dataset).
 
 This script answers three things, reusing already-tested code wherever it exists rather than
 reimplementing it (repo convention -- see analyze_cross_operator_adverbs.py's own docstring):
 
 1. **Is the batch trustworthy to read at all?** Re-runs the manifest<->dataset episode-index
-   mapping check documented in language_grounding_issue_handoff.md's "MAJOR CORRECTION" section
-   (raw manifest episode_index has discard-gaps; the dataset's own episode_index is a compacted
+   mapping check (raw manifest episode_index has discard-gaps; the dataset's own episode_index is a compacted
    0..N-1 renumbering -- matching the two directly silently scored the wrong episode in 0/92
    cases on the old dataset). Reuses diagnose_language_grounding._load_manifest_ordered
    directly, plus checks schema (meta/info.json `features`) against the existing training
@@ -29,7 +28,7 @@ reimplementing it (repo convention -- see analyze_cross_operator_adverbs.py's ow
    the two operators agree?
 
 3. **Colour-position confound**, the same check that falsified this exact hypothesis on the old
-   dataset (language_grounding_issue_handoff.md, "What this is NOT" #2) -- but not assumed to
+   dataset -- but not assumed to
    still hold here, because this batch's collection protocol is structurally different: each
    session is single-colour (mark position isn't reshuffled *within* a session for other
    colours, since there's only one colour per session here). Computes within-session wipe-
@@ -62,14 +61,16 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 REPO_ROOT = os.path.dirname(PROJECT_ROOT)
 EXTERNAL_SCRIPTS = os.path.join(
     PROJECT_ROOT, "hardware", "fr3_bilateral_teleop", "dataset_tools", "evaluation")  # dataset evaluation
+DATA_EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "data_extraction")  # dataset_io, panda_fk, extraction drivers
 sys.path.insert(0, EXTERNAL_SCRIPTS)
+sys.path.insert(0, DATA_EXTRACTION_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
 import dataset_io as dio  # noqa: E402
 from analyze_adverb_separation import (  # noqa: E402
     manner_from_task_text, per_episode_contact_force, cohens_d, load_episode_table,
 )
-from diagnose_language_grounding import _load_manifest_ordered  # noqa: E402
+from compliance_vla.policy.diagnose_language_grounding import _load_manifest_ordered  # noqa: E402
 
 OUT_DIR = os.path.join(PROJECT_ROOT, "reports")
 CONTACT_FORCE_THRESHOLD = 2.0

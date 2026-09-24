@@ -1,34 +1,35 @@
-"""Day 10, M8: offline stiffness-prediction benchmark -- learned predictor vs
+"""M8: offline stiffness-prediction benchmark -- learned predictor vs
 constant predictor vs nearest-neighbour, on held-out sessions. Also evaluates
-GATE 2: learned prediction must beat the constant predictor on held-out
-sessions, or the labels are noise and no online experiment will rescue them.
+the learnability check: learned prediction must beat the constant predictor on
+held-out sessions, or the labels are noise and no online experiment will
+rescue them.
 
-**Task definition (not fully specified by the proposal -- a documented choice,
+**Task definition (not fully specified by the method -- a documented choice,
 same spirit as evaluate_gate1.py's (ii)/(iii)).** Per axis, per identifiable
 (masked) 30Hz timestep, predict log K(t) in the contact frame from a
 proprioception + language feature vector: [q (7), q_dot (7), manner one-hot
 (2: normally/firmly), referent one-hot (4: red/blue/green/black)] = 20 dims.
 Log-space matches how the policy head itself is trained (masked Huber on
-log k, per proposal §4.2) and how K spans decades (§4.1). Deliberately
+log k) and how K spans decades. Deliberately
 excludes force/wrench features: the point of M8 is whether compliance is
 predictable from context resembling what a policy conditions on, not from
 other force channels that would make the check partly circular. Unmasked
 (non-identifiable) timesteps are excluded entirely, matching "masked entries
-are excluded from the loss, not imputed" (§4.1).
+are excluded from the loss, not imputed".
 
 **Splits.** Uses this project's frozen session-level split (build_dataset_splits.py):
 train=demo4, val=demo1, test=demo3 (session counts 1/1/1 -- thin, flagged
 there and again here, not hidden). Val selects the learned predictor's
-hyperparameters (never test); test is the one and only number Gate 2 looks at.
+hyperparameters (never test); test is the one and only number the learnability check looks at.
 
 **Models:**
   - constant: per-axis mean(log K) over TRAIN's masked timesteps, ignoring
-    input entirely -- the trivial baseline Gate 2 requires beating.
+    input entirely -- the trivial baseline the learnability check requires beating.
   - nearest-neighbour: 1-NN in standardized feature space (sklearn
     NearestNeighbors), label copied from the nearest TRAIN point.
   - learned: RFFRidgeBiasModel, reused unmodified from
     fr3_bilateral_teleop/scripts/fit_residual_bias.py (the project's own
-    established "small MLP or GP" choice, per proposal §4.1b step 3 -- a
+    established "small MLP or GP" choice -- a
     random-Fourier-feature ridge regressor, i.e. an approximate GP posterior
     mean, numpy-only). (length_scale, ridge_lambda) are grid-searched on VAL
     (same grid fit_residual_bias.py's own real-data hyperparameter search used),
@@ -57,7 +58,9 @@ EXTERNAL_SCRIPTS = os.path.join(
 RIG_SCRIPTS = os.path.join(
     PROJECT_ROOT, "hardware", "fr3_bilateral_teleop", "scripts")  # fit_residual_bias
 sys.path.insert(0, RIG_SCRIPTS)
+DATA_EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "data_extraction")  # dataset_io, panda_fk, extraction drivers
 sys.path.insert(0, EXTERNAL_SCRIPTS)
+sys.path.insert(0, DATA_EXTRACTION_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
 import dataset_io as dio  # noqa: E402
@@ -255,12 +258,12 @@ def main():
     all_axes_pass = n_axes_evaluated > 0 and n_axes_passing == n_axes_evaluated
     majority_axes_pass = n_axes_evaluated > 0 and n_axes_passing > n_axes_evaluated / 2
 
-    # Primary Gate 2 metric: the proposal states the gate as one pass/fail ("learned
+    # Primary learnability metric: the check is one pass/fail ("learned
     # prediction must beat the constant predictor"), not six independent ones -- so the
     # headline comparison is the MEAN log-K RMSE across all evaluated axes, learned vs
     # constant. Per-axis pass/fail is still reported in full below rather than folded away,
     # matching this project's established practice of surfacing per-axis heterogeneity
-    # (e.g. tasks.md Day 4's fx/ty/tz residual-bias gap) instead of letting an aggregate
+    # (e.g. the fx/ty/tz residual-bias gap) instead of letting an aggregate
     # pass hide it.
     ok_axes = [a for a in FORCE_AXIS_NAMES if report["per_axis"].get(a, {}).get("status") == "ok"]
     mean_const_rmse = float(np.mean([report["per_axis"][a]["constant_rmse_log_k"] for a in ok_axes]))
@@ -280,7 +283,7 @@ def main():
     }
 
     print("\n" + "=" * 70)
-    print(f"GATE 2: learned predictor vs constant predictor, held-out session ({split_sessions['test']})")
+    print(f"LEARNABILITY: learned predictor vs constant predictor, held-out session ({split_sessions['test']})")
     print(f"  mean log-K RMSE across {len(ok_axes)} axes: constant={mean_const_rmse:.4f}  "
           f"learned={mean_learned_rmse:.4f}  (improvement {mean_const_rmse / max(mean_learned_rmse, 1e-9):.3f}x)")
     print(f"  per-axis: {n_axes_passing}/{n_axes_evaluated} axes have learned beating constant")

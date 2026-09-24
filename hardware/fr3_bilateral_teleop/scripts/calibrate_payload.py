@@ -132,7 +132,7 @@ def compose_rigid_bodies(
     was already configured, and this composes preload + delta back into the total. Verified
     against a hand-derived case (two equal point masses symmetric about the origin) and a
     degenerate case (splitting one body into two identical co-located halves must reproduce it
-    exactly) during development -- see the Day-3 (2026-08-10) real-hardware notes in tasks.md.
+    exactly) during development, and on real hardware (2026-08-10).
     """
     total_mass = m1 + m2
     if abs(total_mass) < 1e-9:
@@ -355,7 +355,7 @@ class PayloadCalibrationNode(Node):
         instead sitting somewhere unrelated (e.g. left there by manual jogging, or by an
         earlier aborted transit), the same PD law sees a large error and can command a
         velocity spike large enough to trip a joint_velocity_violation reflex -- exactly the
-        failure mode found during Day-3 real-hardware testing (2026-08-10): the very FIRST
+        failure mode found during real-hardware testing (2026-08-10): the very FIRST
         waypoint faulted this way when the arm wasn't already near the base pose, and every
         retry after that started from an equally arbitrary post-fault position, reproducing
         the same fault for what looked like unrelated reasons. Catching this before

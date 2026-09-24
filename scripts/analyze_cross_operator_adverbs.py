@@ -1,4 +1,4 @@
-"""Cross-operator adverb->force analysis for Figure 6 (Day 9 background item).
+"""Cross-operator adverb->force analysis for Figure 6.
 
 Reuses fr3_bilateral_teleop/dataset_tools/evaluation/analyze_adverb_separation.py's own
 per-episode contact-force computation, manner parsing, and Cohen's-d
@@ -8,7 +8,7 @@ which analyze_adverb_separation.py deliberately does NOT read for manner/task,
 but IS the right source for operator identity) and the cross-operator
 comparisons / Figure 6 that script doesn't produce.
 
-Two questions, matching proposal §5's "operator adverb calibration" item:
+Two questions, for operator adverb calibration:
   1. Within each operator, do normally/firmly separate? (H4's core premise,
      per-operator -- analyze_adverb_separation.py answers this pooled-across-
      operators; here it's split.)
@@ -33,7 +33,9 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)          # compliance-vla/
 REPO_ROOT = os.path.dirname(PROJECT_ROOT)            # datasets/ (holds dataset/ and external/)
 EXTERNAL_SCRIPTS = os.path.join(
     PROJECT_ROOT, "hardware", "fr3_bilateral_teleop", "dataset_tools", "evaluation")  # dataset evaluation
+DATA_EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "data_extraction")  # dataset_io, panda_fk, extraction drivers
 sys.path.insert(0, EXTERNAL_SCRIPTS)
+sys.path.insert(0, DATA_EXTRACTION_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
 import dataset_io as dio  # noqa: E402

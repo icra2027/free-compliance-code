@@ -1,8 +1,8 @@
-"""Day 14: B3 -- force input + HYBRID force-position output (proposal §6.1:
-"ForceVLA2 / Force Policy style", "closest competing output parameterization").
+"""B3 -- force input + HYBRID force-position output (ForceVLA2 / Force Policy
+style, the closest competing output parameterization).
 
 Where this sits relative to the other force-input baselines already built
-(src/compliance_vla/policy/compliance_policy.py, Day 11/12):
+(src/compliance_vla/policy/compliance_policy.py):
   - B2 (force in, position out): flow-matching on a 7-dim [x_eq(6),
     gripper(1)] action, no compliance output at all.
   - B5 ("ours", force in, compliance out): flow-matching on the FULL 13-dim
@@ -21,9 +21,8 @@ Where this sits relative to the other force-input baselines already built
     generative/diffusion decoding for the continuous pose trajectory, a
     separate direct-regression (or control-parameter) head for force/
     stiffness -- structurally distinct from B5's single joint generative
-    target for both channels, which is exactly the ablation the proposal's
-    baseline table (§6.1) asks B3 to isolate ("closest competing output
-    parameterization").
+    target for both channels, which is exactly the ablation B3 exists to
+    isolate (the closest competing output parameterization).
 
 Architecturally otherwise identical to B2/B5 (§4.2's "keep the architecture
 boring on purpose" applies here too): same force-history token, injected
@@ -60,7 +59,7 @@ POS_ACTION_DIM = 7  # [x_eq(6), gripper(1)] -- the only channels that go through
 @PreTrainedConfig.register_subclass("smolvla_b3_hybrid")
 @dataclass
 class HybridSmolVLAConfig(ComplianceSmolVLAConfig):
-    """B3: force input, hybrid force-position output (proposal §6.1).
+    """B3: force input, hybrid force-position output.
 
     Inherits every B2/B5-shared field (chunk_size, force_history_*,
     force_dropout_p, wrench_bias_range_n, huber_delta, lam_log_k) from

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Per-axis contact-force traces with phase annotation, for a LeRobot-format demo
-(data_recorder output, e.g. dataset_collection/19082601) -- tasks.md Day 7
-background item, "extraction figure script (stiffness traces with phase annotation, Figure 3)".
+(data_recorder output, e.g. dataset_collection/19082601) -- the extraction figure script
+(stiffness traces with phase annotation, Figure 3).
 
-**This is NOT proposal Figure 3 as specified, and the gap is deliberate, not an oversight.**
-Figure 3 is supposed to show extracted per-axis STIFFNESS K(t) (§4.1's regression of
+**This is NOT Figure 3 as specified, and the gap is deliberate, not an oversight.**
+Figure 3 is supposed to show extracted per-axis STIFFNESS K(t) (the extraction regression of
 f = K*(x_l - x_f) + D*(...)). That regression needs the LEADER pose x_l(t) as an independent
 measurement -- it is the entire point of §2.2(b), the identifiability argument that is this
 paper's technical core. `extract_impedance_labels.py` already implements that regression and

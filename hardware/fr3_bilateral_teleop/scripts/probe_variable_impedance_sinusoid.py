@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sinusoidal stiffness probe for the proposal §4.3 variable-impedance controller.
+"""Sinusoidal stiffness probe for the variable-impedance controller.
 
 Publishes a sinusoidal per-axis target stiffness (`target_stiffness`, std_msgs/
 Float64MultiArray, the same 6-element [kx,ky,kz,krx,kry,krz] layout
@@ -9,13 +9,13 @@ PoseStamped) at `variable_impedance_controllers`' `variable_impedance_controller
 controller's own `~/diagnostics/{stiffness_target,stiffness_applied,energy_tank_energy}`
 topics (added this session specifically for this purpose -- see cartesian_controller.cpp's
 `applyStiffnessShaping()`) to CSV and produces the commanded-vs-realized-stiffness +
-energy-tank-trace figure the proposal §4.3 requires.
+energy-tank-trace figure.
 
 Run launch/validate_variable_impedance.launch.py first (defaults to fake hardware -- no
 physical robot needed to exercise the wiring, but no real dynamics either; the arm will not
 actually move under fake hardware, so this validates the stiffness-shaping pipeline's own
-numerics and the topic/param wiring, NOT a physically realistic force response -- see
-tasks.md Day 5 for what a real-hardware run still needs to add). A nonzero, FIXED pose
+numerics and the topic/param wiring, NOT a physically realistic force response; a
+real-hardware run is needed for that). A nonzero, FIXED pose
 offset is commanded (not zero) specifically so the energy tank sees genuine nonzero
 withdrawal amounts (0.5*delta_k*e^2) as the sinusoid increases stiffness, rather than every
 increase being free.
@@ -204,7 +204,7 @@ def parse_args() -> argparse.Namespace:
              "rate limiting is visible in the trace, slow enough that it still tracks")
     parser.add_argument(
         "--publish-rate", type=float, default=30.0,
-        help="Hz -- matches the proposal's action-chunk rate (§4.2), not the raw 1kHz")
+        help="Hz -- matches the policy's action-chunk rate, not the raw 1kHz")
     parser.add_argument(
         "--pose-offset", type=float, nargs=3, default=[0.03, 0.0, 0.0],
         metavar=("DX", "DY", "DZ"),

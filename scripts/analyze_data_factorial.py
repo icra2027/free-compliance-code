@@ -1,7 +1,7 @@
 """Sanity-check + factor-decorrelation analysis for the `data_factorial_2c` collection batch
 (2x2x2: colour x position x manner, 12 episodes/cell, 96 total).
 
-Context: language_grounding_issue_handoff.md's 2026-09-05 update found that the previous
+Context: the 2026-09-05 analysis found that the previous
 2-colour batch (data_two_color) had two confounds -- colour was effectively fixed to one board
 position, and the deployed checkpoint's predictions collapsed onto whichever colour a given
 *manner* happened to be recorded with, at chance accuracy. This new batch crosses colour with
@@ -32,12 +32,16 @@ training-utility verdict.
 import argparse
 import json
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 
-import dataset_io as dio
-from analyze_data_two_color import (
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_extraction"))  # dataset_io
+
+import dataset_io as dio  # noqa: E402
+from analyze_data_two_color import (  # noqa: E402
     check_episode_mapping, check_raw_data_integrity, check_schema_compatibility,
     build_per_episode_table, position_confound_analysis, adverb_analysis,
 )

@@ -78,7 +78,7 @@ private:
   // - force_reflection_channel_latency_publisher_ publishes, in microseconds, the age of the
   //   follower->leader force-reflection message (channel 2) at the moment it is consumed,
   //   i.e. `now - header.stamp`. This is only meaningful if the leader and follower clocks are
-  //   synchronized (see the proposal's Week 1 time-sync check); it is not a substitute for it.
+  //   synchronized (see the time-sync check); it is not a substitute for it.
   // Publishing uses realtime_tools::RealtimePublisher, which is RT-safe: it never blocks the
   // update() thread and silently drops a sample if the non-RT publish thread is still busy.
   using Float64RtPublisher = realtime_tools::RealtimePublisher<std_msgs::msg::Float64>;

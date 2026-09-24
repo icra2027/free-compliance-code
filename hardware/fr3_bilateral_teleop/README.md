@@ -233,8 +233,8 @@ the mass/COM fit.
 
 Payload identification and per-session re-zero (above) remove a *fixed* bias and a *pose-independent
 constant*, respectively. What's left is the part that actually varies with configuration and
-velocity -- joint friction, small payload-model residuals -- which per the proposal's §4.1b step 3
-is worth roughly another 2x on the effective noise floor. Two scripts, run in sequence, no ROS
+velocity -- joint friction, small payload-model residuals -- which is expected to be worth
+roughly another 2x on the effective noise floor. Two scripts, run in sequence, no ROS
 dependency for the second one:
 
 1. **`collect_free_space_sweep.py`** drives the follower through
@@ -277,8 +277,8 @@ dependency for the second one:
    clear of the envelope.
 2. **`fit_residual_bias.py`** (offline, numpy-only -- no torch/sklearn in this environment) fits a
    random-Fourier-feature ridge regressor per wrench axis -- the finite-dimensional, closed-form
-   approximation of GP kernel-ridge regression, i.e. one of the two model classes the proposal
-   names ("small MLP or GP") without a new dependency. Splits are by **session** (one sweep pass),
+   approximation of GP kernel-ridge regression, i.e. one of the two model classes considered
+   ("small MLP or GP") without a new dependency. Splits are by **session** (one sweep pass),
    never by row, matching this project's session-level-split convention elsewhere.
    ```bash
    python3 fit_residual_bias.py --input sweep1.csv sweep2.csv --output-dir /tmp/foo
@@ -291,10 +291,10 @@ dependency for the second one:
    is what to run first if the real fit ever comes back suspicious, to rule out a code bug before
    suspecting the data.
 
-**Status as of Day 3:** both scripts build/run and the self-test passes (mean improvement ratio
+**Status when first written:** both scripts build/run and the self-test passes (mean improvement ratio
 ~2.8x on synthetic data), but neither has been run against real hardware yet -- there is no real
 sweep CSV, no real `residual_bias_model.npz`, and no real noise-floor-improvement number. That is
-the next real-hardware step, and it's a precondition for Day 4's `sigma_f` measurement being the
+the next real-hardware step, and it's a precondition for the `sigma_f` measurement being the
 *post-bias-correction* number the paper actually wants to report.
 
 **Update (10 Aug, same day): run against real hardware, and the real number misses the ~2x
@@ -312,7 +312,7 @@ hyperparameter setting tried. That per-axis consistency (not just noise on the w
 at something structural to those three axes specifically -- lower intrinsic SNR at this
 attachment/speed regime, or a real bug isolated to those columns -- rather than a tuning problem,
 but it hasn't been root-caused yet. **Use ~1.1x, not ~2x, as the real noise-floor improvement when
-interpreting `sigma_f` and Gate 1's identifiability thresholds**, and treat the `fx`/`ty`/`tz` gap
+interpreting `sigma_f` and the H1 identifiability thresholds**, and treat the `fx`/`ty`/`tz` gap
 as an open risk rather than something this step already solved.
 
 ### Workspace and nullspace constraints
@@ -323,7 +323,7 @@ Cartesian controller (§4.3): a `nullspace_posture` (redundancy-resolution targe
 the same fixed `start_joint_configuration` already used for the free-space re-zero and payload
 calibration, reused here rather than inventing a second "canonical pose." The workspace bounds
 **are** a placeholder (`status: placeholder_unmeasured` in the file) -- there is no real fixture to
-measure against until T1/T2 are physically mounted (earliest Day 4, frozen Day 6), so the schema
+measure against until T1/T2 are physically mounted and frozen, so the schema
 and consuming code can be written and tested now, but the numbers must not be treated as a real
 safety bound until replaced.
 
@@ -349,13 +349,13 @@ interactive prompt at every `(pose, mass)` combination -- hang the mass, press E
 samples for `--sample-time` seconds and moves on.
 
 **Precondition:** the follower's normal tool payload must already be configured via `set_load`
-(Day 2's `calibrate_payload.py`). The mass you hang for this script must **not** also be
+(`calibrate_payload.py`). The mass you hang for this script must **not** also be
 declared to `set_load` -- doing so would make the robot's own model absorb it, and the whole
 point is testing the *external* wrench estimate against a load it doesn't know about.
 
 **Safety:** each hold uses the same finished-state, zero-added-torque mechanism as
 `calibrate_payload.py`'s and `collect_free_space_sweep.py`'s static holds -- it trusts the
-robot's own gravity compensation, which by design does not include the hung mass. Day 2/3 found
+robot's own gravity compensation, which by design does not include the hung mass. Earlier real-hardware sessions found
 that holding an undeclared payload this way for several seconds is enough to trip a
 `joint_velocity_violation` reflex once the undeclared weight is large enough. Start with the
 lightest calibrated mass first and confirm a clean hold before moving to heavier ones.
@@ -402,7 +402,7 @@ the sibling package **`variable_impedance_controllers`** (a fork of
 instead of finishing a from-scratch controller here. The original is a mature, FR3-validated, ros2_control Cartesian-impedance/operational-space controller from
 utiasDSL (IEEE RAP 2026), built specifically for deploying VLA policies via Pinocchio-based
 dynamics -- a stronger foundation for the rest of this project's rollout use. It smooths via EMA filtering +
-torque-rate saturation on its own, not this proposal's specific log-space-rate-limit +
+torque-rate saturation on its own, not this work's specific log-space-rate-limit +
 energy-tank mechanism, so `stiffness_rate_limiter.hpp`/`energy_tank.hpp` are copied (not
 depended on cross-package, so each package stays self-contained) into `variable_impedance_controllers/include/variable_impedance_controllers/utils/`, and
 `variable_impedance_controllers/src/cartesian_controller.cpp` gained a new `applyStiffnessShaping()` step
@@ -445,7 +445,7 @@ ros2 run fr3_bilateral_teleop probe_variable_impedance_sinusoid.py --duration 20
 For a real robot once one is available: add `use_fake_hardware:=false robot_ip:=<ip>` to the
 first command. Nothing else changes.
 
-### Impedance label extraction and Gate 1 evaluation
+### Impedance label extraction and H1 evaluation
 
 The offline tools that turn recorded demonstrations into labels, and evaluate those
 demonstrations, live in `dataset_tools/`, separate from the rig scripts in `scripts/`. None of
@@ -454,7 +454,7 @@ them needs ROS, and all are installed for `ros2 run` like the rig scripts:
 ```
 dataset_tools/
   labeling/extract_impedance_labels.py        demo CSV -> per-axis K(t) labels + identifiability mask
-  evaluation/evaluate_gate1.py                Gate 1 (H1) conditions over a pilot set of demo CSVs
+  evaluation/evaluate_gate1.py                H1 identifiability conditions over a pilot set of demo CSVs
   evaluation/analyze_adverb_separation.py     per-manner contact-force separation in a LeRobot dataset
   evaluation/plot_demo_force_phase_traces.py  per-axis contact-force traces with phase annotation
 ```
@@ -466,7 +466,7 @@ board/contact-frame calibration, no extraction/regression/mask code anywhere in 
    `x_l(t)`, follower pose `x_f(t)` (both from `franka_robot_state_broadcaster/current_pose`,
    confirmed live at the full 1kHz `convenience_publish_rate` on this rig), and the follower's
    `external_wrench_in_base_frame`. Interactive start (position the arms, press Enter), records
-   for `--duration` seconds (default 25s, matching the proposal's data budget).
+   for `--duration` seconds (default 25s, matching the ~25s/demo data budget).
    ```bash
    ros2 run fr3_bilateral_teleop record_demo.py --task T1_wiping --operator A --manner gently
    ```
@@ -476,10 +476,10 @@ board/contact-frame calibration, no extraction/regression/mask code anywhere in 
    - **Contact frame is auto-fit from the demo's own in-contact follower positions** (SVD plane
      fit, normal oriented via mean contact-force direction, gated on a planarity-quality check)
      rather than a separate dedicated touch-calibration -- deliberately avoids adding new
-     real-hardware motion (Day 4 already had a near-miss from an improvised calibration
-     workaround; see tasks.md). Uses `--frame-fit-force-threshold` (default 8N), a
+     real-hardware motion (an earlier session had a near-miss from an improvised calibration
+     workaround). Uses `--frame-fit-force-threshold` (default 8N), a
      **deliberately higher** threshold than the mask's `--contact-force-threshold` (2N) --
-     real Day 5 pilot data showed light/transitional contact near 2N (approach, retreat,
+     real pilot data showed light/transitional contact near 2N (approach, retreat,
      grazing touches) is genuinely not planar (planarity_ratio 0.15-0.24 on 4/5 real pilots),
      while firm contact above ~6-8N is (0.007-0.13 on the same demos) -- a real geometric
      distinction between two different jobs (plane-fitting precision vs. mask SNR
@@ -488,15 +488,15 @@ board/contact-frame calibration, no extraction/regression/mask code anywhere in 
      `SO(3)` log-map for orientation), windowed (300ms, trailing/causal) into a regularized,
      log-space, box-constrained regression solved via `scipy.optimize.least_squares` (the
      `||log k - log k_prior||^2` regularizer is genuinely nonlinear, not closed-form).
-   - Output is at **30Hz**, matching the policy's action-chunk rate (§4.2), not the raw 1kHz --
+   - Output is at **30Hz**, matching the policy's action-chunk rate, not the raw 1kHz --
      that's the rate anything downstream actually consumes.
-   - The identifiability mask implements all four §4.1 conditions; excitation (Gram condition
+   - The identifiability mask implements all four conditions; excitation (Gram condition
      number) and sustained-contact are window properties, `|e_i|`/`|f_i|` above their noise
      floors are evaluated instantaneously. Coverage is reported both overall and **restricted to
-     contact timesteps**, matching Gate 1 (H1)(i)'s literal wording.
+     contact timesteps**, matching H1 condition (i)'s literal wording.
    - Damping `d_i` is fit freely (all the offline analysis figure needs). The POLICY-TARGET
      constrained form `D = 2*zeta*sqrt(K*Mhat)` needs a Cartesian effective-mass estimate this
-     demo-CSV pipeline doesn't have -- deferred to Week 3 training prep, not silently skipped.
+     demo-CSV pipeline doesn't have -- deferred to training prep, not silently skipped.
    ```bash
    ros2 run fr3_bilateral_teleop extract_impedance_labels.py --input demo1.csv demo2.csv ...
    python3 dataset_tools/labeling/extract_impedance_labels.py --self-test   # synthetic ground truth, no hardware
@@ -504,13 +504,13 @@ board/contact-frame calibration, no extraction/regression/mask code anywhere in 
 
 3. **`evaluate_gate1.py`** -- runs the extraction pipeline (imported, not reimplemented -- same
    pattern `diagnose_gravity_preload.py` uses against `calibrate_payload.py`) across a pilot set
-   and checks all three Gate 1 (H1) conditions. The proposal states condition (i) precisely but
+   and checks all three H1 conditions. The method states condition (i) precisely but
    leaves (ii)/(iii) qualitative -- this script defines and documents concrete computations:
    (ii) compares whole-demo `K` variation against a short-timescale (adjacent 30Hz-step) noise
    estimate, on the reasoning that true stiffness can't swing meaningfully between two mostly-
    overlapping 300ms windows 33ms apart; (iii) is the max/min ratio of the three translational
-   axes' median masked `K`. Reports per-demo and pooled, but does **not** auto-decide the gate --
-   "Decision: if Gate 1 fails, switch to Fallback A" is stated as a call for a human to make.
+   axes' median masked `K`. Reports per-demo and pooled, but does **not** auto-decide the outcome --
+   whether H1 holds is left as a call for a human to make.
    ```bash
    ros2 run fr3_bilateral_teleop evaluate_gate1.py --input pilot1.csv pilot2.csv pilot3.csv ...
    python3 dataset_tools/evaluation/evaluate_gate1.py --self-test   # synthetic, no hardware
@@ -518,7 +518,7 @@ board/contact-frame calibration, no extraction/regression/mask code anywhere in 
 
 **Self-test coverage, and a real bug it caught:** `extract_impedance_labels.py --self-test`
 recovers known per-axis anisotropic stiffness (300/250/800 N/m, 20/15/40 Nm/rad) to within 0-7%,
-correctly suppresses the free-space phase (0% false-identifiable), and clears Gate 1's 25%
+correctly suppresses the free-space phase (0% false-identifiable), and clears H1 condition (i)'s 25%
 within-contact threshold (85-95%) on data designed to pass it. The first version of the synthetic
 ground-truth generator used a different in-plane `(x, y)` basis convention than
 `fit_contact_frame` recovers from real data (in-plane axis choice about a normal is inherently
@@ -531,21 +531,21 @@ passing.
 ### Live force-band display
 
 `live_force_band_display.py` -- a standalone operator display showing the follower's live
-contact-force magnitude against the three adverb target bands from proposal §5 / tasks.md Day 6
+contact-force magnitude against the three adverb target bands
 (`gently` 3-6 N, `normally` 8-12 N, `firmly` 15-22 N). Run it alongside teleop and the LeRobot
 recorder during collection:
 ```bash
 ros2 run fr3_bilateral_teleop live_force_band_display.py --target-manner gently
 ```
 - Deliberately **not** part of `data_recorder`'s `record_lerobot` node and never writes
-  a dataset frame -- "the policy never sees these numbers" (tasks.md) holds by construction, not
+  a dataset frame -- "the policy never sees these numbers" holds by construction, not
   by convention, since this process has no path to the dataset at all.
 - Displays `||(fx, fy, fz)||` from `external_wrench_in_base_frame`, smoothed over
   `--smoothing-window` samples (default 50, ~50ms at the follower's 1kHz rate) for readability.
   This is a magnitude proxy for the board-normal force, not the real per-axis decomposition --
   that only exists offline, fit from a completed demo's own in-contact positions
   (`extract_impedance_labels.py::fit_contact_frame`). It's an acceptable approximation for a live
-  gauge because Day 5's real pilot demos already measured a 7-14x contact-frame anisotropy ratio
+  gauge because the real pilot demos already measured a 7-14x contact-frame anisotropy ratio
   once contact is firm, so force magnitude is normal-force-dominated during genuine wiping
   contact. Don't read anything quantitative from this display beyond "in/out of band."
 - `--target-manner {gently,normally,firmly}` fills in the band currently being collected so the

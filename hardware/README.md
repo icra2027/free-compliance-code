@@ -1,17 +1,18 @@
 # Robot-side code
 
-Four ROS 2 packages, each self-contained:
+Three ROS 2 packages, each self-contained. A fourth, `deploy_vla` (policy
+rollout and evaluation), lives with the rest of the SmolVLA code in
+`../smolvla_policy/deploy_vla/` and is built into the same workspace:
 
 | Package | Build type | Origin |
 | --- | --- | --- |
 | `variable_impedance_controllers` | ament_cmake | renamed fork of [crisp_controllers](https://github.com/learnsyslab/crisp_controllers) (MIT) |
 | `fr3_bilateral_teleop` | ament_cmake | renamed fork of [franka_ros2_teleop](https://github.com/frankarobotics/franka_ros2_teleop) (Apache 2.0) |
-| `deploy_vla` | ament_python | written for this work |
 | `data_recorder` | ament_python | written for this work |
 
 ```bash
 # in a ROS 2 workspace
-cp -r hardware/{variable_impedance_controllers,fr3_bilateral_teleop,deploy_vla,data_recorder} src/
+cp -r hardware/{variable_impedance_controllers,fr3_bilateral_teleop,data_recorder} smolvla_policy/deploy_vla src/
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 colcon test --packages-select variable_impedance_controllers fr3_bilateral_teleop
 ```
@@ -93,15 +94,17 @@ without a robot.
 `fit_residual_bias.py`. `tests/test_provenance.py` checks that the two copies
 have not diverged.
 
-## deploy_vla and data_recorder
+## data_recorder and deploy_vla
 
-* **`deploy_vla`** handles policy deployment and evaluation. `deploy_smolvla.py`
-  is the rollout node. It implements temporal ensembling across overlapping
-  action chunks; `src/compliance_vla/ensembling.py` is that mechanism extracted
-  so it can be tested without ROS. The package also holds the evaluation and
-  scoring harnesses.
 * **`data_recorder`** records bilateral demonstrations into the
   LeRobot dataset format, including the leader-pose channel the method needs.
+* **`deploy_vla`** (in `../smolvla_policy/deploy_vla/`) handles policy deployment
+  and evaluation. `deploy_smolvla.py` is the rollout node. It implements temporal
+  ensembling across overlapping action chunks; `src/compliance_vla/ensembling.py`
+  is that mechanism extracted so it can be tested without ROS. The package also
+  holds the evaluation and scoring harnesses. It reads `tool_offset.npy` from
+  `data_extraction/`, so the whole release is expected at `src/compliance-vla/`
+  in the ROS 2 workspace.
 
 ## Running any of this
 

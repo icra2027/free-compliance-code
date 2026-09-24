@@ -45,10 +45,10 @@ filterwarnings = ["error::RuntimeWarning"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
-# The research scripts under scripts/ and the packages under hardware/ are the
-# record of what actually ran for the paper. They are deliberately not
-# reformatted to satisfy a linter that was not applied to them when the results
-# were produced, so they are not linted.
+# The research scripts under scripts/ and data_extraction/, and the ROS packages
+# under hardware/ and smolvla_policy/, are the record of what actually ran for the
+# paper. They are deliberately not reformatted to satisfy a linter that was not
+# applied to them when the results were produced, so they are not linted.
 include = ["src/compliance_vla/**/*.py", "tests/*.py"]
 
 [tool.ruff.lint]
@@ -73,3 +73,19 @@ ignore = [
 # The policy modules are this work's own code, but they were written against
 # LeRobot's conventions and were not linted when the results were produced.
 "src/compliance_vla/policy/*.py" = ["UP", "I001", "F401", "E402"]
+# The training/serving/diagnostic entrypoints were research scripts until they were
+# folded into the package; the same reasoning as for scripts/ applies, so the
+# style-only rule families are not enforced on them.
+"src/compliance_vla/policy/analyze_operatorA_rollout_trajectories.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/check_input_sensitivity.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/check_state_convention_sensitivity.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/client_example.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/controller_frame_utils.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/diagnose_language_grounding.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/evaluate_gate3.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/fit_manner_force_calibration.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/score_ink_removal.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/serve_policy.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/train_b5.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/train_policy.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]
+"src/compliance_vla/policy/tune_lambda.py" = ["UP", "I001", "F401", "E402", "B", "C4", "F541"]

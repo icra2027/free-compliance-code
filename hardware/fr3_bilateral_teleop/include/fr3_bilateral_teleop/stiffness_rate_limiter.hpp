@@ -23,25 +23,25 @@ namespace fr3_bilateral_teleop
 
 using Vector6d = Eigen::Matrix<double, 6, 1>;
 
-// Log-space rate limiter for the per-axis Cartesian stiffness output (proposal §4.3):
+// Log-space rate limiter for the per-axis Cartesian stiffness output:
 // |d(log k)/dt| <= gamma. Stiffness spans decades (tens to ~1500 N/m), so limiting the raw
 // (linear) rate would let the same gamma be wildly too aggressive at low k and too
 // conservative at high k; limiting the LOG rate makes the bound scale-invariant, so one gamma
 // works across the whole commandable range. This is what protects the arm from the piecewise
 // -constant K produced by chunked policy predictions: without it, a stiffness jump at a chunk
 // boundary injects energy in one control step and can make the arm buzz or trip a protective
-// stop (see the required commanded-vs-realized-stiffness validation figure in §4.3).
+// stop (see the required commanded-vs-realized-stiffness validation figure).
 //
 // This class is a standalone, unit-tested building block for the variable-impedance Cartesian
-// controller described in §4.3 -- as of Day 3 that controller itself does not exist yet (the
-// only follower controller currently implemented, TeleopFollowerController, is a fixed-gain
-// joint-impedance controller with no stiffness output at all). Not wired into any running
-// controller yet; see fr3_bilateral_teleop/README.md and tasks.md Day 3 for status.
+// controller. Not wired into a running controller in this package (the follower controller
+// here, TeleopFollowerController, is a fixed-gain joint-impedance controller with no stiffness
+// output at all); the variable-impedance controller that uses this mechanism lives in
+// variable_impedance_controllers (see fr3_bilateral_teleop/README.md).
 class LogSpaceStiffnessRateLimiter
 {
 public:
   // gamma_per_axis: max |d(log k)/dt| per axis, 1/s. k_min/k_max: hard bounds on the
-  // realizable stiffness range (proposal §4.1: 50-1500 N/m translational, 5-100 N*m/rad
+  // realizable stiffness range (50-1500 N/m translational, 5-100 N*m/rad
   // rotational), applied AFTER rate limiting so the limiter can never be bypassed by
   // requesting an out-of-range target.
   LogSpaceStiffnessRateLimiter(

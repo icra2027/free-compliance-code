@@ -324,7 +324,7 @@ int main(int argc, char ** argv)
   // then sample the estimated external wrench there -- whatever isn't zero is bias
   // (friction, payload mis-specification, thermal drift) that must be captured now,
   // before teleoperation starts, or it silently shows up later as a spurious
-  // stiffness trend (see compliance-vla-icra2027-proposalv2.md, section 4.1b).
+  // stiffness trend.
   RCLCPP_INFO(node->get_logger(), "Settling at free-space pose before re-zero sampling...");
   rclcpp::sleep_for(std::chrono::duration_cast<std::chrono::nanoseconds>(REZERO_SETTLE_DURATION));
   rclcpp::spin_some(node);

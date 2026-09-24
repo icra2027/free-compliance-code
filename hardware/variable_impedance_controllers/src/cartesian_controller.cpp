@@ -169,7 +169,7 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
     return controller_interface::return_type::ERROR;
   }
 
-  // proposal §4.3: shape this cycle's target stiffness (log-space rate limit + energy tank)
+  // Shape this cycle's target stiffness (log-space rate limit + energy tank)
   // into stiffness/damping before they're used below. Needs `error` (already finalized
   // above) and `J` (just computed above) for the tank's withdrawal-amount and dissipated-
   // power bookkeeping.
@@ -544,7 +544,7 @@ CartesianController::on_configure(const rclcpp_lifecycle::State & /*previous_sta
       REGISTER_ROS2_CONTROL_INTROSPECTION("q_target_" + std::to_string(i), &q_target[i]);
       REGISTER_ROS2_CONTROL_INTROSPECTION("q_ref_" + std::to_string(i), &q_ref[i]);
     }
-    // Proposal §4.3 commanded-vs-realized-stiffness validation figure: stiffness_target_*
+    // Commanded-vs-realized-stiffness validation figure: stiffness_target_*
     // is the "commanded" side, stiffness_applied_* is the "realized" side (post rate-limit
     // + energy tank).
     for (int i = 0; i < stiffness_target_diagonal_.size(); ++i) {
@@ -565,7 +565,7 @@ CartesianController::on_configure(const rclcpp_lifecycle::State & /*previous_sta
 }
 
 void CartesianController::setStiffnessAndDamping() {
-  // Computes this cycle's stiffness TARGET only. The proposal §4.3 log-space rate limiter
+  // Computes this cycle's stiffness TARGET only. The log-space rate limiter
   // and energy tank (applyStiffnessShaping(), called every update()) turn this into the
   // actually-applied stiffness_applied_diagonal_, which is what `stiffness`/`damping` get
   // set to -- NOT this function anymore. This function still owns the [0, max] clamp (a
@@ -653,7 +653,7 @@ void CartesianController::applyStiffnessShaping(double dt, const Eigen::VectorXd
       // Found empirically, not assumed: an earlier version left the limiter fully
       // decoupled from the veto ("it always sees its own true, uninterrupted trajectory").
       // Under a sinusoidal stiffness probe with one axis given a sustained, genuinely
-      // nonzero pose error (see tasks.md Day 5 / scripts/probe_variable_impedance_sinusoid.py),
+      // nonzero pose error (see scripts/probe_variable_impedance_sinusoid.py),
       // that axis's tank hit its floor early and then never recovered even a single decrease
       // for the rest of a 15s run -- confirmed (via a debug run with an effectively
       // unlimited tank) that the axis tracks the sinusoid fine on its own; the flatline was
@@ -919,7 +919,7 @@ void CartesianController::log_debug_info(const rclcpp::Time & time) {
       "nullspace_damping: " << nullspace_damping);
     RCLCPP_INFO_STREAM_THROTTLE(
       get_node()->get_logger(), *get_node()->get_clock(), 1000,
-      "stiffness_target (proposal §4.3, pre-shaping): "
+      "stiffness_target (pre-shaping): "
         << stiffness_target_diagonal_.transpose()
         << " | stiffness_applied (post rate-limit + energy tank): "
         << stiffness_applied_diagonal_.transpose()

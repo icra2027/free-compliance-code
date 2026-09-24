@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Collect (q, q̇, estimated external wrench) samples in free space for residual bias fitting.
 
-Day 3 of the ICRA27 plan: the Panda's estimated external wrench still carries a
-configuration- and velocity-dependent bias after payload identification (Day 2) and
+The Panda's estimated external wrench still carries a configuration- and
+velocity-dependent bias after payload identification and
 per-session re-zero -- friction and model error that a single free-space-pose bias sample
 does not capture. This script drives the follower through free-space motion spanning the
 intended working volume at several speeds and logs (q, q̇, wrench) throughout, both during
@@ -17,7 +17,7 @@ for why: it's the one controller already proven safe for repeated unattended poi
 motion on this rig). Deliberately does NOT use payload_model_broadcaster's model snapshot --
 unlike calibrate_payload.py (which runs before set_load is configured and has to reconstruct
 the residual from franka::Model's gravity/Coriolis/mass predictions itself), this script runs
-AFTER Day 2's payload calibration is wired into teleop startup, so
+AFTER the payload calibration is wired into teleop startup, so
 franka_robot_state_broadcaster/external_wrench_in_base_frame is already the payload-corrected
 signal the rest of the pipeline (re-zero, extraction) consumes. Logging it directly keeps this
 script's job to exactly one thing: characterizing what's left after that correction.
@@ -280,7 +280,7 @@ def main() -> int:
                     controller_active = False
 
                 if i == 0:
-                    # Only while inactive -- see README/Day-2 notes on why
+                    # Only while inactive -- see README notes on why
                     # move_to_start_example_controller's parameters must not be touched while
                     # the controller is active and holding.
                     if not node.set_speed_factor(float(speed_factor)):

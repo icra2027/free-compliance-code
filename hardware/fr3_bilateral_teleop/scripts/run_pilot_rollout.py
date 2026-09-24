@@ -1,54 +1,54 @@
 #!/usr/bin/env python3
-"""Day 14: T1 in-distribution PILOT rollouts for GATE 3 (tasks.md Day 14 / proposal §7):
+"""T1 in-distribution PILOT rollouts for the pilot check:
 
-  "Pilot rollouts on T1 in-distribution, n = 5 per policy. Sanity only --
-  these are NOT evaluation rollouts and must not be reported."
-  "GATE 3. B5 >= B0 on the in-distribution pilot. If not, check whether
-  realized K tracks commanded K before touching the model."
+  Pilot rollouts on T1 in-distribution, n = 5 per policy. Sanity only --
+  these are NOT evaluation rollouts and are not reported. The check is
+  B5 >= B0 on the in-distribution pilot; if not, check whether realized K
+  tracks commanded K before touching the model.
 
 This is the robot-control-side client: lightweight by design (json_numpy +
 requests only for the policy call, no torch/lerobot -- same split
-scripts/serve_policy.py's docstring already establishes: "the client is the
+src/compliance_vla/policy/serve_policy.py's docstring already establishes: "the client is the
 robot-control machine (no GPU, possibly no direct network path to wherever
-the checkpoint lives)"). The actual policy runs on scripts/serve_policy.py,
+the checkpoint lives)"). The actual policy runs on src/compliance_vla/policy/serve_policy.py,
 reached over the SSH-tunnelled HTTP /act endpoint documented there.
 
 One rollout:
   1. Capture a "before" overhead frame (scene camera) for ink-removal scoring.
-  2. Loop for --duration seconds: at --replan-hz (10Hz, proposal §4.3),
+  2. Loop for --duration seconds: at --replan-hz (10Hz),
      build the observation (scene/wrist RGB, [q, qdot, x_f] state, force
      history) and POST it to the served policy for a fresh action chunk;
      between replans, publish `target_pose`/`target_stiffness` to
      variable_impedance_controllers' variable-impedance controller at --publish-hz,
      picking the current chunk step via controller_frame_utils.chunk_step_index
-     (compliance-vla/scripts, imported below) and holding it --
+     (compliance-vla/src/compliance_vla/policy, imported below) and holding it --
      the controller's own log-space stiffness rate limiter + cubic-spline
-     pose interpolation (already validated real-hardware, Day 5) do the
+     pose interpolation (already validated on real hardware) do the
      actual smoothing between commands, this script does not re-implement
      that.
   3. Capture an "after" overhead frame, score per-mark ink removal
-     (compliance-vla/scripts/score_ink_removal.py) against
+     (compliance-vla/src/compliance_vla/policy/score_ink_removal.py) against
      operator-supplied --rois, and write one JSON log consumable by
-     compliance-vla/scripts/evaluate_gate3.py.
+     compliance-vla/src/compliance_vla/policy/evaluate_gate3.py.
 
 Policies with no compliance output (b0, b2) get a FIXED, isotropic HIGH
 stiffness (extract_impedance_labels.K_MAX -- the controller's own realizable
 upper bound, reused verbatim rather than inventing a second "high" constant)
-for the whole rollout, matching proposal §6.1's literal description of B0
+for the whole rollout, matching the definition of B0
 ("fixed high stiffness") and giving B2 the same low-level behaviour B0 has
 (B2's own architecture has no stiffness output either). Policies with a
 compliance output (b3, b5) get the policy's predicted log_k, exp()'d and
 rotated from the auto-fit CONTACT frame into a base-frame diagonal via
-scripts/fit_frozen_contact_frame.py's frozen R_contact + this project's
+data_extraction/fit_frozen_contact_frame.py's frozen R_contact + this project's
 controller_frame_utils.rotate_diag_stiffness_to_base -- see that module's
 docstring for exactly what this approximation does and does not preserve
-(it is the "Week-4 controller-integration question" src/compliance_vla/policy/labels.py
+(it is the controller-integration question src/compliance_vla/policy/labels.py
 flags as out of scope for training, given a first, documented pass here
 because a PILOT rollout can't skip it the way training could).
 
 **Requires ROI calibration first** (one-time per session, not built here,
-out of scope for a Day-14 sanity pilot): the 4 marks' colour->position
-mapping is randomized per session (proposal §5), so --rois pixel
+out of scope for a sanity pilot): the 4 marks' colour->position
+mapping is randomized per session, so --rois pixel
 coordinates must be read off the CURRENT scene-camera frame by hand (e.g.
 `ros2 run image_view image_view image:=/camera/color/image_raw` and eyeball
 pixel bounds, or a small dedicated click-4-corners tool -- not built here)
@@ -62,9 +62,8 @@ probe_variable_impedance_sinusoid.py's target_pose/target_stiffness
 publishers, data_recorder's camera topics/cv_bridge usage) rather
 than invented fresh, and the pure-computation pieces it depends on
 (controller_frame_utils, score_ink_removal) are unit-tested in isolation
-(see compliance-vla/scripts/README.md) -- but the ROS2 wiring itself
-is unverified against real hardware, same "no robot access this session"
-status as several earlier days in tasks.md.
+(see compliance-vla/smolvla_policy/README.md) -- but the ROS2 wiring itself
+is unverified against real hardware (no robot access when it was written).
 
 Usage (after bringing up bilateral teleop + serve_policy.py on the GPU
 machine, with an SSH tunnel per serve_policy.py's docstring):
@@ -96,11 +95,13 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))  # realpath, not abspat
 # so abspath() (which doesn't follow symlinks) would resolve SCRIPT_DIR to the install tree
 # instead of src/fr3_bilateral_teleop/scripts, breaking the sibling-package lookup below.
 WORKSPACE_SRC = os.path.dirname(os.path.dirname(SCRIPT_DIR))  # .../src
-PROJECT_SCRIPTS = os.path.join(WORKSPACE_SRC, "compliance-vla", "scripts")
+PROJECT_ROOT = os.path.join(WORKSPACE_SRC, "compliance-vla")
+DATA_EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "data_extraction")  # panda_fk, tool_offset.npy, contact_frame_t1.npy
+POLICY_DIR = os.path.join(PROJECT_ROOT, "src", "compliance_vla", "policy")  # controller_frame_utils, score_ink_removal
 # extract_impedance_labels lives in this package's dataset_tools/labeling/ in the source tree
 # (without symlink-install it is also installed next to this file, in lib/fr3_bilateral_teleop/).
 LABELING_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "dataset_tools", "labeling")
-for _p in (SCRIPT_DIR, LABELING_DIR, PROJECT_SCRIPTS):
+for _p in (SCRIPT_DIR, LABELING_DIR, DATA_EXTRACTION_DIR, POLICY_DIR):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
@@ -110,20 +111,20 @@ from extract_impedance_labels import K_MAX, quat_to_rotvec  # noqa: E402 -- reus
 from controller_frame_utils import chunk_step_index, rotate_diag_stiffness_to_base  # noqa: E402
 from score_ink_removal import score_rollout  # noqa: E402
 
-CONTACT_FRAME_PATH = os.path.join(PROJECT_SCRIPTS, "contact_frame_t1.npy")
-TOOL_OFFSET_PATH = os.path.join(PROJECT_SCRIPTS, "tool_offset.npy")
+CONTACT_FRAME_PATH = os.path.join(DATA_EXTRACTION_DIR, "contact_frame_t1.npy")
+TOOL_OFFSET_PATH = os.path.join(DATA_EXTRACTION_DIR, "tool_offset.npy")
 
 POLICIES_WITH_COMPLIANCE = ("b3", "b5")
-ACTION_RATE_HZ = 30.0  # matches the policy's own chunk rate, proposal §4.2
-CHUNK_SIZE = 32  # proposal §4.2 H=32 @ 30Hz
+ACTION_RATE_HZ = 30.0  # matches the policy's own chunk rate
+CHUNK_SIZE = 32  # H=32 @ 30Hz
 
 
 def rotvec_to_quat(rv: np.ndarray) -> np.ndarray:
     """rv: (3,) rotation vector -> (4,) quaternion [x,y,z,w]. Same formula as
-    compliance-vla/scripts/run_extraction_on_dataset.py's
+    compliance-vla/data_extraction/run_extraction_on_dataset.py's
     rotvec_batch_to_quat -- duplicated here (rather than imported) so this
     robot-control script stays free of that module's pandas import, the
-    same "lightweight client" principle scripts/serve_policy.py's docstring
+    same "lightweight client" principle src/compliance_vla/policy/serve_policy.py's docstring
     already establishes for client_example.py. Keep in sync with the
     canonical batched version if either changes.
     """
@@ -367,11 +368,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--follower-namespace", default="franka_teleop/follower")
     p.add_argument("--scene-topic", default="/camera/color/image_raw")
     p.add_argument("--wrist-topic", default="/wrist/wrist_camera/color/image_raw")
-    p.add_argument("--n-rollouts", type=int, default=5, help="tasks.md Day 14: n=5 per policy, sanity only")
+    p.add_argument("--n-rollouts", type=int, default=5, help="n=5 per policy, sanity only")
     p.add_argument("--referent", required=True, choices=("red", "blue", "green", "black"))
-    p.add_argument("--manner", default="normally", choices=("normally", "firmly"), help="see Day 6 scope reset: gently is out of scope")
+    p.add_argument("--manner", default="normally", choices=("normally", "firmly"), help="gently is out of scope for T1")
     p.add_argument("--duration", type=float, default=8.0, help="seconds per rollout")
-    p.add_argument("--replan-hz", type=float, default=10.0, help="proposal §4.3: policy replans at 10Hz")
+    p.add_argument("--replan-hz", type=float, default=10.0, help="policy replans at 10Hz")
     p.add_argument("--publish-hz", type=float, default=30.0, help="target_pose/target_stiffness publish rate")
     p.add_argument("--rois", nargs="+", required=True, help="name:x,y,w,h per mark -- read off the CURRENT session's frame, see module docstring")
     p.add_argument("--diff-threshold", type=float, default=25.0)
@@ -391,14 +392,14 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not os.path.exists(args.tool_offset):
-        print(f"error: {args.tool_offset} missing -- run compliance-vla/scripts/calibrate_tool_offset.py first", file=sys.stderr)
+        print(f"error: {args.tool_offset} missing -- run compliance-vla/data_extraction/calibrate_tool_offset.py first", file=sys.stderr)
         return 1
     tool_offset = np.load(args.tool_offset)
 
     R_contact = None
     if args.policy in POLICIES_WITH_COMPLIANCE:
         if not os.path.exists(args.contact_frame):
-            print(f"error: {args.contact_frame} missing -- run compliance-vla/scripts/fit_frozen_contact_frame.py first", file=sys.stderr)
+            print(f"error: {args.contact_frame} missing -- run compliance-vla/data_extraction/fit_frozen_contact_frame.py first", file=sys.stderr)
             return 1
         R_contact = np.load(args.contact_frame)
 
@@ -424,8 +425,7 @@ def main() -> int:
         results = []
         for i in range(args.n_rollouts):
             print(f"[run_pilot_rollout] {args.policy} rollout {i+1}/{args.n_rollouts} -- "
-                  f"press Enter to reset the mark and start (auto-reset harness is Week 4, Day 16 -- "
-                  f"manual reset for these Day-14 pilots).", flush=True)
+                  f"press Enter to reset the mark and start (manual reset for these pilots).", flush=True)
             input("> ")
             result = run_one_rollout(node, args, i, R_contact, task)
             print(json.dumps(result, indent=2))
@@ -440,7 +440,7 @@ def main() -> int:
         n_success = sum(r["success"] for r in results)
         mean_ink = sum(r["ink_removal_pct_targeted"] for r in results) / len(results)
         print(f"\n[run_pilot_rollout] {args.policy}: {n_success}/{len(results)} success, "
-              f"mean targeted ink-removal {mean_ink:.1f}%. Sanity only -- see tasks.md Day 14, "
+              f"mean targeted ink-removal {mean_ink:.1f}%. Sanity only -- "
               f"do not report these numbers. Copy {output_dir} into "
               f"compliance-vla/reports/pilot_rollouts/ before running evaluate_gate3.py.")
         return 0

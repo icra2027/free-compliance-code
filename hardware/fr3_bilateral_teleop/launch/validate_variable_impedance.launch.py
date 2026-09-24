@@ -13,9 +13,8 @@
 #  limitations under the License.
 
 """Brings up a single Franka arm (no teleop pairing) running variable_impedance_controllers'
-CartesianController, patched with the proposal §4.3 log-space stiffness rate limiter +
-energy tank -- see fr3_bilateral_teleop/README.md ("Variable-impedance controller") and
-tasks.md Day 5.
+CartesianController, patched with the log-space stiffness rate limiter + energy tank --
+see fr3_bilateral_teleop/README.md ("Variable-impedance controller").
 
 Defaults to `use_fake_hardware:=true` (no physical robot needed, via ros2_control's
 mock_components/GenericSystem): this validates the wiring -- controller activation, topic
@@ -227,7 +226,7 @@ def generate_launch_description():
     # franka_robot_state_broadcaster too -- see variable_impedance_validation_controllers.yaml
     # for why that controller is defined in this package's own config despite variable_impedance_controllers
     # not needing it). A second spawn attempt here raced with that one and failed outright on
-    # a real-hardware run (see tasks.md Day 5) -- confirmed empirically, not just reasoned
+    # a real-hardware run -- confirmed empirically, not just reasoned
     # about after the fact.
 
     pose_broadcaster_spawner = Node(

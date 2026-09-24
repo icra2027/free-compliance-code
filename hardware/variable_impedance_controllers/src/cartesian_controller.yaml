@@ -351,7 +351,7 @@ cartesian_controller:
       default_value: "target_stiffness"
       description: "Topic name for receiving variable stiffness updates (std_msgs/Float64MultiArray with 6 elements: [k_pos_x, k_pos_y, k_pos_z, k_rot_x, k_rot_y, k_rot_z])"
 
-  # Compliance-VLA proposal §4.3 requires log-space stiffness rate limiting
+  # Compliance-VLA requires log-space stiffness rate limiting
   # (|d(log k)/dt| <= gamma, scale-invariant across the decades stiffness spans) plus an
   # energy-tank passivity guard (a stiffness INCREASE is refused once the tank is at its
   # floor; decreases are always free) -- a different mechanism from this controller's own
@@ -372,17 +372,17 @@ cartesian_controller:
     gamma:
       type: double_array
       default_value: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
-      description: "Max |d(log k)/dt| per axis [pos_x, pos_y, pos_z, rot_x, rot_y, rot_z], 1/s. Start point per the project's tasks.md: gamma ~= 3/s."
+      description: "Max |d(log k)/dt| per axis [pos_x, pos_y, pos_z, rot_x, rot_y, rot_z], 1/s. Recommended start point: gamma ~= 3/s."
     min_stiffness_translational:
       type: double
       default_value: 50.0
-      description: "Lower bound of the realizable translational stiffness range (N/m), applied after rate limiting. Matches the proposal's §4.1 realizable range (50-1500 N/m)."
+      description: "Lower bound of the realizable translational stiffness range (N/m), applied after rate limiting. Matches the label extraction's realizable range (50-1500 N/m)."
       validation:
         bounds<>: [0.001, 5000.0]
     min_stiffness_rotational:
       type: double
       default_value: 5.0
-      description: "Lower bound of the realizable rotational stiffness range (Nm/rad), applied after rate limiting. Matches the proposal's §4.1 realizable range (5-100 Nm/rad). The upper bounds reuse variable_max_stiffness.translational/rotational above rather than duplicating them."
+      description: "Lower bound of the realizable rotational stiffness range (Nm/rad), applied after rate limiting. Matches the label extraction's realizable range (5-100 Nm/rad). The upper bounds reuse variable_max_stiffness.translational/rotational above rather than duplicating them."
       validation:
         bounds<>: [0.001, 100.0]
     energy_tank:

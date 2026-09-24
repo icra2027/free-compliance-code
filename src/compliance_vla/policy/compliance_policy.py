@@ -1,9 +1,9 @@
-"""Day 11/12: B2 and B5 policies -- shared force-input machinery, split by
-`use_compliance_head` (proposal §6.1 baseline table).
+"""B2 and B5 policies -- shared force-input machinery, split by
+`use_compliance_head`.
 
   - B0 (position output, fixed stiffness, no force input) needs none of this
     module's additions -- it is lerobot's unmodified `SmolVLAConfig`/
-    `SmolVLAPolicy`, used directly, see scripts/train_policy.py. Included
+    `SmolVLAPolicy`, used directly, see src/compliance_vla/policy/train_policy.py. Included
     here only as a comment so the three baselines' relationship is visible
     from one place.
   - B2 (force input, position output): `ComplianceSmolVLAConfig` with
@@ -14,7 +14,7 @@
   - B5 (force input, compliance output, "ours"): `ComplianceSmolVLAConfig`
     defaults (`use_force_input=True, use_compliance_head=True`). 13-dim
     compliance output head + force-history token injected post-VLM
-    (proposal §4.2), as built on Day 11.
+    (see below).
 
 Architecture summary (see the ASCII diagram in modeling_smolvla.VLAFlowMatching
 for the unmodified base):
@@ -25,8 +25,7 @@ for the unmodified base):
     500ms of 6-DoF wrench, see force_encoder.py) and placed before the
     action-time tokens in embed_suffix -- i.e. after the VLM has already run
     (`embed_prefix`/the VLM forward pass never sees it), matching the
-    proposal's "injected post-VLM" wording and the ForceVLA finding it
-    cites. It gets the same attention-mask "block start" bit the state token
+    "injected post-VLM" design and the ForceVLA finding behind it. It gets the same attention-mask "block start" bit the state token
     already gets, so it is visible to the VLM prefix + itself only as a
     query, but every action-chunk token (later in the same suffix, larger
     cumulative attention-mask index) can see it as a key -- global context
@@ -68,11 +67,11 @@ from .losses import compliance_loss, position_only_loss
 @PreTrainedConfig.register_subclass("smolvla_compliance")
 @dataclass
 class ComplianceSmolVLAConfig(SmolVLAConfig):
-    # H = 32 @ 30Hz (~1.07s), proposal §4.2 -- overrides SmolVLAConfig's defaults (50/50).
+    # H = 32 @ 30Hz (~1.07s) -- overrides SmolVLAConfig's defaults (50/50).
     chunk_size: int = 32
     n_action_steps: int = 32
 
-    # Wrist/scene RGB are captured at 224x224 (proposal §4.2), but
+    # Wrist/scene RGB are captured at 224x224, but
     # SmolVLM2's own SigLIP vision encoder expects a 512x512-shaped patch
     # grid internally (its pixel_shuffle connector reshapes on that
     # assumption -- a real RuntimeError, not a preference, when fed a
@@ -91,8 +90,7 @@ class ComplianceSmolVLAConfig(SmolVLAConfig):
     huber_delta: float = 1.0
     lam_log_k: float = 1.0
 
-    # Day 12: which baseline this config builds. B5 = both True (default,
-    # unchanged from Day 11). B2 sets use_compliance_head=False via the
+    # Which baseline this config builds. B5 = both True (default). B2 sets use_compliance_head=False via the
     # B2Config subclass below. B0 doesn't use this config class at all.
     use_force_input: bool = True
     use_compliance_head: bool = True
@@ -101,7 +99,7 @@ class ComplianceSmolVLAConfig(SmolVLAConfig):
 @PreTrainedConfig.register_subclass("smolvla_b2_force_position")
 @dataclass
 class B2Config(ComplianceSmolVLAConfig):
-    """B2: VLA + force as input, position output (proposal §6.1) -- same
+    """B2: VLA + force as input, position output -- same
     force-injection machinery as B5, 7-dim position-only output instead of
     the 13-dim compliance head."""
 
@@ -190,7 +188,7 @@ class ComplianceVLAFlowMatching(VLAFlowMatching):
         v_t = self.action_out_proj(suffix_out)
         return u_t, v_t
 
-    def sample_actions(  # noqa: D102 -- deliberate copy of VLAFlowMatching.sample_actions (RTC path dropped, out of Day-11 scope)
+    def sample_actions(  # noqa: D102 -- deliberate copy of VLAFlowMatching.sample_actions (RTC path dropped, out of scope)
         self, images, img_masks, lang_tokens, lang_masks, state, force_hist=None, noise=None, **kwargs
     ) -> Tensor:
         bsize = state.shape[0]

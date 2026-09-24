@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# controller_manager config for validating the proposal §4.3 variable-impedance controller
+# controller_manager config for validating the variable-impedance controller
 # (variable_impedance_controllers/CartesianController, patched with the log-space rate limiter + energy
 # tank -- see fr3_bilateral_teleop/README.md "Variable-impedance controller" and
 # variable_impedance_controllers/README.md). Loaded by launch/validate_variable_impedance.launch.py.
@@ -21,8 +21,8 @@
 # with variable_impedance_controllers' controller instead of the teleop leader/follower pair, and is meant
 # to run against `use_fake_hardware:=true` (no physical robot needed) as well as, later, real
 # hardware with no changes beyond the launch arg -- see scripts/probe_variable_impedance_sinusoid.py
-# and tasks.md Day 5 for what's still open (a real-hardware run; this config/script only
-# closes the "does the wiring work" gap, not the physical-dynamics one).
+# (under fake hardware this config/script only closes the "does the wiring work" gap, not
+# the physical-dynamics one).
 
 /**:
   controller_manager:
@@ -37,7 +37,7 @@
       # defined here only because teleop_single_robot.launch.py's generate_robot_nodes()
       # unconditionally spawns it on real hardware (use_fake_hardware:=false). Omitting it
       # from this config makes that spawn fail outright ("'type' param was not defined"),
-      # confirmed on a real-hardware run -- see tasks.md Day 5.
+      # confirmed on a real-hardware run.
       franka_robot_state_broadcaster:
         type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
         state_interfaces:
@@ -121,8 +121,8 @@
         k_rot_z: 20.0
 
       # Real Franka: firmware already compensates gravity internally on the torque
-      # interface (see fr3_bilateral_teleop/README.md "franka_hardware effort interface" /
-      # tasks.md Day 5 for how this was confirmed) -- leave false even under fake hardware
+      # interface (see fr3_bilateral_teleop/README.md "franka_hardware effort interface"
+      # for how this was confirmed) -- leave false even under fake hardware
       # so this config carries over to a real-hardware run unchanged.
       use_gravity_compensation: false
       # NOT auto-compensated by the firmware; add explicitly (matches libfranka's own
@@ -139,14 +139,14 @@
         projector_type: "kinematic"
 
       variable_max_stiffness:
-        translational: 1500.0  # proposal §4.1 realizable range
+        translational: 1500.0  # realizable range
         rotational: 100.0
 
       variable_stiffness:
         enabled: true
         topic: "target_stiffness"
 
-      # Proposal §4.3 mechanism this session's patch adds (see variable_impedance_controllers/README.md).
+      # Stiffness-shaping mechanism this patch adds (see variable_impedance_controllers/README.md).
       stiffness_shaping:
         enabled: true
         gamma: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0]

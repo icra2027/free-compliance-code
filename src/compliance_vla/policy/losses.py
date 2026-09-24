@@ -1,22 +1,22 @@
-"""Day 11: masked Huber on log k, combined with flow-matching L1 on x_eq.
+"""Masked Huber on log k, combined with flow-matching L1 on x_eq.
 
-Proposal §4.2: "flow-matching / L1 on x_eq; masked Huber on log k, weight
-lambda tuned on the validation split. Log-space is non-negotiable." and
-§4.1: "masked entries excluded, never imputed."
+The method: flow-matching / L1 on x_eq; masked Huber on log k, weight
+lambda tuned on the validation split, always in log space; masked entries
+are excluded, never imputed.
 
-Design choice, not fully specified by the proposal (documented here the same
+Design choice, not fully specified by the method (documented here the same
 way M8/evaluate_gate1.py document theirs): SmolVLA's action expert is trained
 as conditional flow matching over the *whole* padded action chunk -- there is
 no point during training where a direct log_k value is decoded, only the
 velocity field v_t predicted from noisy actions x_t at a random corruption
-time t (see modeling_smolvla.VLAFlowMatching.forward). The proposal's "masked
-Huber on log k" is therefore applied to the same (noise - action) vs
+time t (see modeling_smolvla.VLAFlowMatching.forward). The "masked Huber on
+log k" is therefore applied to the same (noise - action) vs
 predicted-velocity residual SmolVLA already computes for x_eq, restricted to
 the log_k channels and swapping the per-element loss shape from the x_eq
 family's L1 to Huber. This keeps a single shared denoising target (required --
 the model outputs one joint v_t for the whole 13-dim vector) while giving log
-k the robust-to-outlier Huber shape the proposal asks for and x_eq the L1
-shape it asks for.
+k the robust-to-outlier Huber shape and x_eq the L1 shape the method calls
+for.
 """
 
 import torch
@@ -51,9 +51,9 @@ def masked_l1_loss(residual, mask):
 
 
 def position_only_loss(u_t, v_t, x_eq_mask, gripper_mask):
-    """B0/B2 baseline loss (Day 12): plain flow-matching L1 on
+    """B0/B2 baseline loss: plain flow-matching L1 on
     [x_eq(6), gripper(1)] -- no log_k term, since these baselines have no
-    compliance head (proposal §6.1: B0 = position output, fixed stiffness;
+    compliance head (B0 = position output, fixed stiffness;
     B2 = force input, position output). Same masked-L1 convention as
     compliance_loss's own x_eq/gripper terms, split out so B0/B2 training
     doesn't need to construct an unused log_k_mask.
@@ -69,9 +69,9 @@ def position_only_loss(u_t, v_t, x_eq_mask, gripper_mask):
 
 
 def hybrid_loss(u_t_pos, v_t_pos, x_eq_mask, gripper_mask, log_k_pred, log_k_target, log_k_mask, lam, huber_delta=1.0):
-    """Day 14: B3 training loss -- force input + HYBRID force-position output
-    (proposal §6.1 B3 row: "ForceVLA2 / Force Policy style", "closest
-    competing output parameterization").
+    """B3 training loss -- force input + HYBRID force-position output
+    (ForceVLA2 / Force Policy style, the closest competing output
+    parameterization).
 
     The key difference from compliance_loss (B5): x_eq/gripper are still
     decoded through the flow-matching noise-residual (u_t_pos, v_t_pos,
@@ -81,7 +81,7 @@ def hybrid_loss(u_t_pos, v_t_pos, x_eq_mask, gripper_mask, log_k_pred, log_k_tar
     -- its residual is (prediction - ground-truth value), not
     (noise - action) restricted to the log_k channels. B5 puts x_eq and log_k
     through one shared generative (flow-matching) target; B3 is the
-    "hybrid" alternative the proposal names as the closest competing
+    "hybrid" alternative that is the closest competing
     parameterization: position via a generative/diffusion-style decoder,
     force/stiffness via a direct regression head off the same backbone --
     matching how ForceVLA2/Force Policy structure their output, per §6.1's
@@ -128,7 +128,7 @@ def compliance_loss(u_t, v_t, x_eq_mask, log_k_mask, gripper_mask, lam, huber_de
     log_k_mask: (B, H, 6) -- x_eq_mask/in-episode-bound AND the extraction
         pipeline's per-axis identifiability mask (never imputed).
     lam: loss weight on the log_k term, tuned on the validation split per
-        §4.2 (left as a CLI/config knob, see scripts/train_b5.py --lam).
+        §4.2 (left as a CLI/config knob, see src/compliance_vla/policy/train_b5.py --lam).
 
     Returns (total_loss, {"loss_x_eq":..., "loss_log_k":..., "loss_gripper":...}).
     """
@@ -196,7 +196,7 @@ def _self_test():
     assert abs(parts_pos["loss"] - parts_pos["loss_x_eq"]) < 1e-6, "gripper term is masked out, should not shift total"
     assert not any(v != v for v in parts_pos.values())
 
-    # hybrid_loss (B3, Day 14): position term matches position_only_loss exactly (same
+    # hybrid_loss (B3): position term matches position_only_loss exactly (same
     # u7/v7/x_eq_mask/gripper_mask7 inputs) -- the only thing that should differ from B2's
     # loss is the added, separately-supervised log_k regression term.
     log_k_pred = torch.randn(B, H, 6)

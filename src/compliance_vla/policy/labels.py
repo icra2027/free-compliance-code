@@ -1,16 +1,16 @@
-"""Day 11: per-episode training labels for the compliance policy.
+"""Per-episode training labels for the compliance policy.
 
-Reuses the already-tested §4.1 extraction pipeline (scripts/
+Reuses the already-tested §4.1 extraction pipeline (data_extraction/
 run_extraction_on_dataset.py -> hardware/fr3_bilateral_teleop/dataset_tools/
 labeling/extract_impedance_labels.py) for log_k/mask rather than re-deriving the
-windowed regression, and scripts/panda_fk.py + the calibrated tool offset for
+windowed regression, and data_extraction/panda_fk.py + the calibrated tool offset for
 the follower's Cartesian pose x_f, exactly like that script already does for
-Gate 2's M8 benchmark.
+the M8 offline benchmark.
 
 Two things worth being explicit about, since they're easy to get wrong by
 analogy with the extraction script:
   - x_eq is NOT extract_demo_30hz's contact-frame pose error `e`. It is
-    `observation.leader_pose` directly: proposal §2.2(b)/§4.1's
+    `observation.leader_pose` directly: the method's
     identifiability argument defines x_eq := x_l (the leader's own pose),
     and `observation.leader_pose` is already stored as [x, y, z, rx, ry, rz]
     -- position + rotation vector, base/world frame (confirmed by
@@ -20,8 +20,8 @@ analogy with the extraction script:
   - log_k IS in the auto-fit contact frame (extract_demo_30hz's `k`), not
     base frame -- matching how M8's offline benchmark already consumes the
     same field. Rotating predicted K back to base frame for the low-level
-    controller is a Week-4 controller-integration question, out of scope
-    here.
+    controller is a controller-integration question, out of scope here
+    (see controller_frame_utils.py).
 """
 
 import json
@@ -30,13 +30,13 @@ import os
 import numpy as np
 
 from ._paths import EXTERNAL_SCRIPTS as _EXTERNAL_SCRIPTS  # noqa: E402
-from ._paths import SCRIPTS_DIR as _SCRIPTS_DIR  # noqa: E402
+from ._paths import DATA_EXTRACTION_DIR as _DATA_EXTRACTION_DIR  # noqa: E402
 from ._paths import ensure_on_sys_path  # noqa: E402
 
 # The modules imported just below are standalone scripts, not installed
 # packages, so they have to be reachable on sys.path before the imports run.
 ensure_on_sys_path()
-SCRIPTS_DIR = str(_SCRIPTS_DIR)
+DATA_EXTRACTION_DIR = str(_DATA_EXTRACTION_DIR)
 EXTERNAL_SCRIPTS = str(_EXTERNAL_SCRIPTS)
 
 import dataset_io as dio  # noqa: E402
@@ -48,12 +48,12 @@ from extract_impedance_labels import (  # noqa: E402
     parse_args as extraction_parse_args,
 )
 
-TOOL_OFFSET_PATH = os.path.join(SCRIPTS_DIR, "tool_offset.npy")
+TOOL_OFFSET_PATH = os.path.join(DATA_EXTRACTION_DIR, "tool_offset.npy")
 
 
 def load_tool_offset():
     if not os.path.exists(TOOL_OFFSET_PATH):
-        raise FileNotFoundError(f"{TOOL_OFFSET_PATH} missing -- run scripts/calibrate_tool_offset.py first")
+        raise FileNotFoundError(f"{TOOL_OFFSET_PATH} missing -- run data_extraction/calibrate_tool_offset.py first")
     return np.load(TOOL_OFFSET_PATH)
 
 
@@ -65,14 +65,14 @@ def default_sigma_f():
     return np.array(DEFAULT_SIGMA_F)
 
 
-MANNER_CALIBRATION_PATH = os.path.join(SCRIPTS_DIR, "manner_force_calibration.json")
+MANNER_CALIBRATION_PATH = os.path.join(DATA_EXTRACTION_DIR, "manner_force_calibration.json")
 
 
 def load_manner_calibration(path=None):
     """Loads the per-operator log_k calibration fit by
-    scripts/fit_manner_force_calibration.py -- see that script's docstring for what problem
+    src/compliance_vla/policy/fit_manner_force_calibration.py -- see that script's docstring for what problem
     this corrects (operator-dependent absolute force/stiffness for the same manner word;
-    language_grounding_issue_handoff.md's cross-operator-adverb finding, sharpened by the
+    the cross-operator-adverb finding, sharpened by the
     2026-09-02 data_two_color batch). Returns None (meaning "apply no calibration") if the
     file doesn't exist yet, rather than raising -- callers should treat that as the
     pre-calibration default, not an error, so existing runs/tests that never fit this file
@@ -86,7 +86,7 @@ def load_manner_calibration(path=None):
 
 def calibrate_log_k(log_k, mask, operator_id, manner, calibration):
     """Per-axis affine recalibration of one episode's log_k array onto the "equal split"
-    cross-operator reference fit by scripts/fit_manner_force_calibration.py: reference_mean/
+    cross-operator reference fit by src/compliance_vla/policy/fit_manner_force_calibration.py: reference_mean/
     reference_std for a given manner are the unweighted (equal-per-operator, not
     sample-count-weighted) average of each operator's own mean/std for that manner -- so
     operator B's smaller episode count doesn't get drowned out by operator A's larger one.
@@ -127,15 +127,15 @@ def calibrate_log_k(log_k, mask, operator_id, manner, calibration):
 def compute_episode_arrays(ep_frames, tool_offset, args, sigma_f, operator_id=None, manner=None, calibration=None):
     """ep_frames: one episode's rows from dataset_io.load_frames(session),
     already filtered+sorted by frame_index. Returns None if the episode
-    fails contact-frame fitting (same rejection as Gate 1/the offline
-    benchmark -- e.g. 1/92 episodes dataset-wide, see reports/extraction_per_episode.json),
+    fails contact-frame fitting (same rejection as the identifiability
+    evaluation and the offline benchmark -- e.g. 1/92 episodes dataset-wide, see reports/extraction_per_episode.json),
     else a dict of raw-frame arrays (length T, native ~30Hz) and
     extraction-output arrays (length N <= T, offset by args.window_sec).
 
     operator_id/manner/calibration: optional, and only meaningful together -- when all three
     are given, the returned "log_k" has calibrate_log_k applied (see that function's
     docstring). Default None/None/None reproduces the pre-calibration behaviour exactly, so
-    existing callers (e.g. scripts/fit_manner_force_calibration.py's own first pass, which
+    existing callers (e.g. src/compliance_vla/policy/fit_manner_force_calibration.py's own first pass, which
     needs the *raw* log_k to fit the calibration in the first place) are unaffected."""
     state = dio.stack_col(ep_frames, "observation.state")
     velocity = dio.stack_col(ep_frames, "observation.velocity")

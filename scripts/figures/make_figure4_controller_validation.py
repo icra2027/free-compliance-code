@@ -2,7 +2,7 @@
 
 Source data: ../analysis/franka_teleop_impedance_probe/sinusoid_probe_1786449651.csv
 This is the real-hardware confirmation run from 11 Aug (12:00 session, follower at
-192.168.101.2, per tasks.md's Day 5 update) -- launched *after* the vetoed-limiter
+192.168.101.2) -- launched *after* the vetoed-limiter
 reset fix was on disk, and *after* the duplicate joint_state_broadcaster spawn bug
 was fixed, so this is the clean run, not the one that raced the pre-fix code.
 

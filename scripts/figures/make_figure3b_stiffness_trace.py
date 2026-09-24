@@ -1,12 +1,12 @@
 """Figure 3b: extracted stiffness trace with phase annotation, from a REAL demo.
 
-This finishes the half of proposal Figure 3 that could not be built earlier --
+This finishes the half of Figure 3 that could not be built earlier --
 the earlier fig3_mask_coverage.py used only the aggregated per-episode summary
 that ships in this repo (reports/extraction_per_episode.json). The raw
 per-timestep bilateral demo logs turned out to exist after all, in
 ../../analysis/franka_teleop_demos/ (x_l(t), x_f(t), wrench f(t) at 1kHz,
-record_demo.py's own CSV format) -- these are the real Day 5 pilot demos
-(operators A/B, "gently") used for Gate 1.
+record_demo.py's own CSV format) -- these are the real pilot demos
+(operators A/B, "gently") used for the identifiability evaluation.
 
 IMPORTANT SCOPE CAVEAT, stated here and in the figure caption: this is a
 SIMPLIFIED reconstruction, not the paper's real §4.1 pipeline
@@ -14,7 +14,7 @@ SIMPLIFIED reconstruction, not the paper's real §4.1 pipeline
 (fr3_bilateral_teleop) not present in this checkout. Differences from the real
 pipeline:
   - base/end-effector frame position error (l - f), not a fitted contact frame
-    (proposal §4.1 explicitly sanctions reporting an end-effector-frame variant
+    (the method explicitly sanctions reporting an end-effector-frame variant
     "in the appendix so reviewers see the choice was deliberate" -- this is
     that variant, not a replacement for the main contact-frame figure).
   - one static per-window least-squares slope K = sum(f*e)/sum(e^2), no

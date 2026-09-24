@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the sensorless external-wrench estimate against known hanging masses.
 
-Day 4 of the ICRA27 plan, §4.1b step 5 (the last item in the sensorless wrench-calibration
+The last step of the sensorless wrench calibration (in
 priority order -- payload ID -> re-zero -> residual bias model -> workspace/nullspace
 constraints -> THIS). Everything before this step corrects the estimate; this step is the
 one independent check that it is actually correct, using ground truth the earlier steps
@@ -23,7 +23,7 @@ is needed to predict the force. Override --gravity-vector-base if the base is kn
 tilted.
 
 PRECONDITION: run this with the follower's normal tool payload already configured via
-set_load (i.e. Day 2's calibrate_payload.py has already run and teleop.launch.py's/
+set_load (i.e. calibrate_payload.py has already run and teleop.launch.py's/
 calibrate_payload.launch.py's startup has applied `<namespace>_payload.yaml`). This script
 adds a SEPARATE, additional known mass on top of that -- it must never be declared to
 set_load, or the comparison stops being independent (see module docstring above).
@@ -32,7 +32,7 @@ SAFETY (read before running against real hardware): each hold relies on the same
 finished-state, zero-added-torque mechanism as calibrate_payload.py's and
 collect_free_space_sweep.py's static holds -- i.e. it trusts the robot's OWN internal
 gravity compensation, which does NOT include whatever extra mass you hang for this script
-(by design -- see above). Day 2/3 found that holding an undeclared payload this way for
+(by design -- see above). Earlier real-hardware sessions found that holding an undeclared payload this way for
 several seconds is enough to sag into a joint_velocity_violation reflex once the undeclared
 weight gets large enough. Start with the LIGHTEST calibrated mass first, watch Desk, and
 only increase --masses once the lighter ones are confirmed to hold cleanly. Default
@@ -122,7 +122,7 @@ def compute_calibration_stats(records: List[Dict], gravity_vec_base: np.ndarray)
         [np.asarray(r["within_hold_std_force"], dtype=float) for r in records]).mean(axis=0)
 
     # Config-dependence check: if the hold-mean residual varies a lot across poses, the
-    # residual isn't just flat noise -- it's pose-dependent, which is exactly what Day 3's
+    # residual isn't just flat noise -- it's pose-dependent, which is exactly what the
     # workspace/nullspace constraint is meant to keep small. Uses hold means deliberately
     # (unlike sigma_f above) since this is checking for a per-pose SHIFT, not sample noise.
     hold_residual_means = [
@@ -156,7 +156,7 @@ def compute_calibration_stats(records: List[Dict], gravity_vec_base: np.ndarray)
             "tx/ty/tz have no independent ground truth in this procedure (predicting them "
             "requires the unmeasured lever arm from the wrench reference point to the hang "
             "point). Reported descriptively only, at the zero-added-mass condition, as a "
-            "sanity check that Day 2's payload calibration is holding -- should sit near the "
+            "sanity check that the payload calibration is holding -- should sit near the "
             "same residual level as the existing payload-corrected estimate, not grow with "
             "pose or with the extra hanging mass."),
         "zero_mass_torque_mean_nm": (
@@ -288,7 +288,7 @@ class HangingMassCalibrationNode(Node):
         """See calibrate_payload.py's identically-purposed check: refuse to activate
         move_to_start_example_controller (a plain PD controller, not velocity-limited)
         toward a target far from where the arm actually is -- the failure mode that tripped
-        a reflex on the very first Day-3 real-hardware waypoint."""
+        a reflex on the very first real-hardware waypoint."""
         current_q = self.wait_for_current_joint_state()
         if current_q is None:
             self.get_logger().error(
@@ -455,7 +455,7 @@ def main() -> int:
     print(
         f"About to move real hardware (namespace={args.namespace}) through {len(waypoints)} "
         f"pose(s), sampling masses {masses} kg at each. Confirm the follower's normal tool "
-        "payload is already applied via set_load (Day 2 calibration), and that the mass "
+        "payload is already applied via set_load (payload calibration), and that the mass "
         f"you're about to hang is NOT also declared to set_load.", flush=True)
     if prompt("Type 'go' to continue, anything else to abort:") != "go":
         print("Aborted.")
@@ -553,7 +553,7 @@ def main() -> int:
         print(json.dumps(stats, indent=2))
         print(
             f"sigma_f (debiased, N) = {stats['sigma_f_debiased_n']} -- this is the number "
-            "Gate 1 / the identifiability mask should use.")
+            "the identifiability mask should use.")
 
         csv_path = output_dir / f"{sanitize_namespace(args.namespace)}_hanging_mass_samples.csv"
         with csv_path.open("w", newline="") as f:
